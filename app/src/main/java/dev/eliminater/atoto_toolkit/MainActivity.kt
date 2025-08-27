@@ -1,7 +1,5 @@
 package dev.eliminater.atoto_toolkit
 
-package dev.eliminater.atoto_toolkit
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -55,11 +53,11 @@ fun HomeScreen() {
                 Button(enabled = !busy, onClick = {
                     scope.launch {
                         busy = true
-                        val (code, txt) = RootShell.run("id && getprop ro.build.display.id")
+                        val (code, txt) = RootShell.runSmart("id && getprop ro.build.display.id")
                         output = "exit=$code\n$txt"
                         busy = false
                     }
-                }) { Text("Test root shell") }
+                }) { Text("Test shell (root if available)") }
 
                 Button(enabled = !busy, onClick = {
                     scope.launch {
@@ -85,10 +83,11 @@ fun HomeScreen() {
     }
 }
 
+/** Works in emulator (no root) and on device (root) thanks to runSmart(). */
 suspend fun makeSnapshot(): String = withContext(Dispatchers.IO) {
     fun now() = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-    val dir = File("/sdcard/Android/data/dev.eliminater.atoto_toolkit/files/state/backup-${now()}").apply { mkdirs() }
-    File(dir, "getprop.txt").writeText(RootShell.run("getprop").second)
-    File(dir, "packages_full.txt").writeText(RootShell.run("pm list packages -f").second)
-    "Snapshot saved: ${dir.absolutePath}\nFiles: getprop.txt, packages_full.txt"
+    val base = File("/sdcard/Android/data/dev.eliminater.atoto_toolkit/files/state/backup-${now()}").apply { mkdirs() }
+    File(base, "getprop.txt").writeText(RootShell.runSmart("getprop").second)
+    File(base, "packages_full.txt").writeText(RootShell.runSmart("pm list packages -f").second)
+    "Snapshot saved: ${base.absolutePath}\nFiles: getprop.txt, packages_full.txt"
 }

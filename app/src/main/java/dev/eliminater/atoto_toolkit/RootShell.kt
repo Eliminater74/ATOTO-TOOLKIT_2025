@@ -6,37 +6,39 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 /**
- * Minimal root shell helper.
- * - isRootAvailable(): true if `su -c id` returns uid=0
- * - run(cmd): executes a command via `su -c`, returns (exitCode, combined output)
+ * Root + non-root shell helper.
+ * - isRootAvailable(): true if `su` works
+ * - runRoot(cmd): su -c cmd
+ * - runShell(cmd): sh -c cmd (no root)
+ * - runSmart(cmd): su if available, else sh
  */
 object RootShell {
 
-    /** Quick check for root access. */
     suspend fun isRootAvailable(): Boolean = withContext(Dispatchers.IO) {
         try {
             val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
             val out = p.inputStream.bufferedReader().readText()
             p.waitFor()
             out.contains("uid=0")
-        } catch (_: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
     }
 
-    /** Execute a command with root. Returns Pair<exitCode, stdout+stderr>. */
-    suspend fun run(cmd: String): Pair<Int, String> = withContext(Dispatchers.IO) {
+    suspend fun runRoot(cmd: String): Pair<Int, String> =
+        exec(arrayOf("su", "-c", cmd))
+
+    suspend fun runShell(cmd: String): Pair<Int, String> =
+        exec(arrayOf("sh", "-c", cmd))
+
+    /** Prefer root, fall back to normal shell (great for emulators). */
+    suspend fun runSmart(cmd: String): Pair<Int, String> =
+        if (isRootAvailable()) runRoot(cmd) else runShell(cmd)
+
+    private suspend fun exec(argv: Array<String>): Pair<Int, String> = withContext(Dispatchers.IO) {
         try {
-            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-
+            val p = Runtime.getRuntime().exec(argv)
             val sb = StringBuilder()
-            BufferedReader(InputStreamReader(p.inputStream)).use { r ->
-                r.lineSequence().forEach { sb.appendLine(it) }
-            }
-            BufferedReader(InputStreamReader(p.errorStream)).use { r ->
-                r.lineSequence().forEach { sb.appendLine(it) }
-            }
-
+            BufferedReader(InputStreamReader(p.inputStream)).use { it.lineSequence().forEach(sb::appendLine) }
+            BufferedReader(InputStreamReader(p.errorStream)).use { it.lineSequence().forEach(sb::appendLine) }
             val code = p.waitFor()
             code to sb.toString().trim()
         } catch (e: Exception) {
