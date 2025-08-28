@@ -34,7 +34,10 @@ fun DebloaterCard() {
     var busy by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf("") }
 
+    // ✅ Get root availability ONCE, inside a coroutine, and reuse the state everywhere.
+    var hasRoot by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
+        hasRoot = RootShell.isRootAvailable()
         all = loadPackages(ctx)
     }
 
@@ -50,9 +53,7 @@ fun DebloaterCard() {
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = {
-                    selected = emptySet()
-                }) { Text("Clear selection") }
+                OutlinedButton(onClick = { selected = emptySet() }) { Text("Clear selection") }
 
                 OutlinedButton(onClick = {
                     selected = filtered(all, query).map { it.pkg }.toSet()
@@ -61,18 +62,14 @@ fun DebloaterCard() {
                 Spacer(Modifier.weight(1f))
 
                 OutlinedButton(onClick = {
-                    // refresh list
                     scope.launch { all = loadPackages(ctx) }
                 }) { Text("Refresh") }
             }
 
             // Actions
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val hasRoot = remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { hasRoot.value = RootShell.isRootAvailable() }
-
                 Button(
-                    enabled = !busy && selected.isNotEmpty() && hasRoot.value,
+                    enabled = !busy && selected.isNotEmpty() && hasRoot,
                     onClick = {
                         scope.launch {
                             busy = true
@@ -83,7 +80,7 @@ fun DebloaterCard() {
                 ) { Text("Disable (root)") }
 
                 Button(
-                    enabled = !busy && selected.isNotEmpty() && hasRoot.value,
+                    enabled = !busy && selected.isNotEmpty() && hasRoot,
                     onClick = {
                         scope.launch {
                             busy = true
@@ -98,8 +95,12 @@ fun DebloaterCard() {
                     onClick = {
                         scope.launch {
                             busy = true
-                            info = runPkgs(ctx, selected,
-                                "cmd package install-existing %s && pm enable %s", "restore")
+                            info = runPkgs(
+                                ctx, selected,
+                                // two %s because we reuse the pkg twice in the composite command
+                                "cmd package install-existing %s && pm enable %s",
+                                "restore"
+                            )
                             busy = false
                         }
                     }
@@ -110,39 +111,37 @@ fun DebloaterCard() {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            Text(
-                text = if (info.isBlank()) "—" else info,
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text(text = if (info.isBlank()) "—" else info, style = MaterialTheme.typography.bodySmall)
 
             Divider()
 
             // Package list
-            val filtered = filtered(all, query)
-            Text(
-                "${filtered.size} apps",
-                style = MaterialTheme.typography.labelMedium
-            )
+            val shown = filtered(all, query)
+            Text("${shown.size} apps", style = MaterialTheme.typography.labelMedium)
 
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 420.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 160.dp, max = 420.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(filtered, key = { it.pkg }) { item ->
+                items(shown, key = { it.pkg }) { item ->
                     val checked = selected.contains(item.pkg)
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .clickable {
-                                selected = if (checked)
-                                    selected - item.pkg else selected + item.pkg
+                                selected = if (checked) selected - item.pkg else selected + item.pkg
                             }
                             .padding(vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Checkbox(checked = checked, onCheckedChange = {
-                            selected = if (it) selected + item.pkg else selected - item.pkg
-                        })
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = { on ->
+                                selected = if (on) selected + item.pkg else selected - item.pkg
+                            }
+                        )
                         Column(Modifier.weight(1f)) {
                             Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(item.pkg, style = MaterialTheme.typography.labelSmall)
@@ -151,9 +150,9 @@ fun DebloaterCard() {
                 }
             }
 
-            if (!RootShell.isRootAvailable()) {
+            if (!hasRoot) {
                 Text(
-                    "Tip: For non-root, you can use Shizuku or Wireless ADB to run the same pm commands.",
+                    "Tip: For non-root, use Shizuku or Wireless ADB to run the same pm commands.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -176,8 +175,10 @@ private suspend fun loadPackages(ctx: Context): List<PkgItem> = withContext(Disp
         pm.getInstalledPackages(0)
     }
     infos.map { pi ->
-        val label = runCatching { pm.getApplicationLabel(pi.applicationInfo).toString() }
-            .getOrElse { pi.packageName }
+        // ✅ applicationInfo can be null on newer SDKs; fall back to packageName
+        val label = pi.applicationInfo?.let { ai ->
+            runCatching { pm.getApplicationLabel(ai).toString() }.getOrNull()
+        } ?: pi.packageName
         PkgItem(pi.packageName, label)
     }.sortedBy { it.label.lowercase(Locale.ROOT) }
 }
@@ -197,10 +198,10 @@ private suspend fun runPkgs(
     val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
 
     for (p in pkgs) {
-        val cmd = cmdFmt.format(p, p) // supports both %s %s (restore) and single %s
+        // allow both 1 and 2 placeholders (restore path uses the pkg twice)
+        val cmd = if (cmdFmt.count { it == '%' } >= 2) cmdFmt.format(p, p) else cmdFmt.format(p)
         val (code, out) = RootShell.runSmart(cmd)
         sb.appendLine("$p → exit=$code, $out")
-        // log
         runCatching { log.appendText("$ts,$actionTag,$p\n") }
     }
     sb.toString()
