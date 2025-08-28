@@ -23,6 +23,43 @@ import java.util.Locale
 
 private data class PkgItem(val pkg: String, val label: String)
 
+/* ---------- Safety sets ---------- */
+
+/** Hard “do-not-touch” list — vendor services + Android/Google essentials */
+private val PROTECTED = setOf(
+    // FYT / ATOTO glue
+    "com.syu.cs","com.syu.ms","com.syu.ps","com.syu.ss","com.syu.us",
+    "com.syu.canbus","com.syu.protocolupdate","com.syu.bt","com.syu.steer",
+    "com.syu.settings","com.syu.rearcamera",
+    // ATOTO keep-alive & GPS
+    "com.atoto.keepaliveservice","org.atoto.gps",
+    // Android core / critical Google services (partial, keep conservative)
+    "android","com.android.systemui","com.android.settings","com.android.permissioncontroller",
+    "com.android.providers.settings","com.android.providers.contacts",
+    "com.google.android.gms","com.google.android.gsf"
+)
+
+/** Suggested “safe removals”: light vendor bloat/UI */
+private val SUGGESTED_SAFE = setOf(
+    "com.syu.music","com.syu.video","com.syu.gallery","com.syu.filemanager",
+    "com.syu.av","com.syu.onekeynavi","com.android.partnerbrowsercustomizations.example"
+)
+
+/** Profile: Conservative = SUGGESTED_SAFE */
+private val PROFILE_CONSERVATIVE = SUGGESTED_SAFE
+
+/** Profile: No Radio & Mirroring (only if you truly don’t use them) */
+private val PROFILE_NO_RADIO_MIRRORING = PROFILE_CONSERVATIVE + setOf(
+    "com.syu.carradio", // using NavRadio+ instead
+    "net.easyconn","com.syu.carlink","com.syu.carmark","com.synmoon.carkit",
+    // extra launchers (disable only after Nova is set as HOME and reboot-tested)
+    "com.unisoc.launcher.customization","com.android.launcher3",
+    "com.android.launcher6","com.android.launcher8"
+    // add "com.google.android.apps.nexuslauncher" if you also want to hide Pixel Launcher
+)
+
+/* ---------- UI ---------- */
+
 @Composable
 fun DebloaterCard() {
     val ctx = LocalContext.current
@@ -33,9 +70,9 @@ fun DebloaterCard() {
     var selected by remember { mutableStateOf(setOf<String>()) }
     var busy by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf("") }
-
-    // ✅ Get root availability ONCE, inside a coroutine, and reuse the state everywhere.
     var hasRoot by remember { mutableStateOf(false) }
+
+    // Load once
     LaunchedEffect(Unit) {
         hasRoot = RootShell.isRootAvailable()
         all = loadPackages(ctx)
@@ -52,11 +89,15 @@ fun DebloaterCard() {
                 singleLine = true
             )
 
+            // Row 1: selection helpers
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { selected = emptySet() }) { Text("Clear selection") }
-
                 OutlinedButton(onClick = {
-                    selected = filtered(all, query).map { it.pkg }.toSet()
+                    // respect search filter and protected guard
+                    selected = filtered(all, query)
+                        .map { it.pkg }
+                        .filterNot { it in PROTECTED }
+                        .toSet()
                 }) { Text("Select all (filtered)") }
 
                 Spacer(Modifier.weight(1f))
@@ -66,6 +107,31 @@ fun DebloaterCard() {
                 }) { Text("Refresh") }
             }
 
+            // Row 2: suggestions / profiles
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    val safe = SUGGESTED_SAFE
+                    selected = filtered(all, query)
+                        .map { it.pkg }
+                        .filter { it in safe && it !in PROTECTED }
+                        .toSet()
+                }) { Text("Select suggested (safe)") }
+
+                OutlinedButton(onClick = {
+                    selected = filtered(all, query)
+                        .map { it.pkg }
+                        .filter { it in PROFILE_CONSERVATIVE && it !in PROTECTED }
+                        .toSet()
+                }) { Text("Apply profile: Conservative") }
+
+                OutlinedButton(onClick = {
+                    selected = filtered(all, query)
+                        .map { it.pkg }
+                        .filter { it in PROFILE_NO_RADIO_MIRRORING && it !in PROTECTED }
+                        .toSet()
+                }) { Text("Apply profile: No Radio & Mirroring") }
+            }
+
             // Actions
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
@@ -73,7 +139,11 @@ fun DebloaterCard() {
                     onClick = {
                         scope.launch {
                             busy = true
-                            info = runPkgs(ctx, selected, "pm disable-user --user 0 %s", "disable-user")
+                            info = runPkgs(
+                                ctx, selected,
+                                "pm disable-user --user 0 %s",
+                                "disable-user"
+                            )
                             busy = false
                         }
                     }
@@ -84,7 +154,11 @@ fun DebloaterCard() {
                     onClick = {
                         scope.launch {
                             busy = true
-                            info = runPkgs(ctx, selected, "pm uninstall --user 0 %s", "uninstall-user0")
+                            info = runPkgs(
+                                ctx, selected,
+                                "pm uninstall --user 0 %s",
+                                "uninstall-user0"
+                            )
                             busy = false
                         }
                     }
@@ -97,7 +171,6 @@ fun DebloaterCard() {
                             busy = true
                             info = runPkgs(
                                 ctx, selected,
-                                // two %s because we reuse the pkg twice in the composite command
                                 "cmd package install-existing %s && pm enable %s",
                                 "restore"
                             )
@@ -111,7 +184,10 @@ fun DebloaterCard() {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            Text(text = if (info.isBlank()) "—" else info, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = if (info.isBlank()) "—" else info,
+                style = MaterialTheme.typography.bodySmall
+            )
 
             Divider()
 
@@ -144,7 +220,8 @@ fun DebloaterCard() {
                         )
                         Column(Modifier.weight(1f)) {
                             Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(item.pkg, style = MaterialTheme.typography.labelSmall)
+                            val protectedMark = if (item.pkg in PROTECTED) "  (protected)" else ""
+                            Text(item.pkg + protectedMark, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -152,13 +229,15 @@ fun DebloaterCard() {
 
             if (!hasRoot) {
                 Text(
-                    "Tip: For non-root, use Shizuku or Wireless ADB to run the same pm commands.",
+                    "Tip: Without root you can still use Restore, or pair with Shizuku/Wireless ADB for pm commands.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
         }
     }
 }
+
+/* ---------- Helpers ---------- */
 
 private fun filtered(list: List<PkgItem>, q: String): List<PkgItem> {
     if (q.isBlank()) return list
@@ -175,7 +254,7 @@ private suspend fun loadPackages(ctx: Context): List<PkgItem> = withContext(Disp
         pm.getInstalledPackages(0)
     }
     infos.map { pi ->
-        // ✅ applicationInfo can be null on newer SDKs; fall back to packageName
+        // applicationInfo may be null on newer SDKs; fall back to package name
         val label = pi.applicationInfo?.let { ai ->
             runCatching { pm.getApplicationLabel(ai).toString() }.getOrNull()
         } ?: pi.packageName
@@ -189,20 +268,27 @@ private suspend fun runPkgs(
     cmdFmt: String,
     actionTag: String
 ): String = withContext(Dispatchers.IO) {
-    val sb = StringBuilder()
     val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
-    val log = File(base, "state/removed_packages.csv").apply {
-        parentFile?.mkdirs()
-        if (!exists()) writeText("datetime,action,package\n")
+    val stateDir = File(base, "state").apply { mkdirs() }
+    val log = File(stateDir, "removed_packages.csv").apply {
+        if (!exists()) writeText("datetime,action,package,result\n")
     }
     val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
 
+    val sb = StringBuilder()
+
     for (p in pkgs) {
-        // allow both 1 and 2 placeholders (restore path uses the pkg twice)
+        if (p in PROTECTED && actionTag != "restore") {
+            sb.appendLine("$p → SKIP (protected)")
+            runCatching { log.appendText("$ts,$actionTag,$p,skip-protected\n") }
+            continue
+        }
+        // allow 1 or 2 placeholders (restore path uses it twice)
         val cmd = if (cmdFmt.count { it == '%' } >= 2) cmdFmt.format(p, p) else cmdFmt.format(p)
         val (code, out) = RootShell.runSmart(cmd)
-        sb.appendLine("$p → exit=$code, $out")
-        runCatching { log.appendText("$ts,$actionTag,$p\n") }
+        val line = "$p → exit=$code${if (out.isBlank()) "" else ", $out"}"
+        sb.appendLine(line)
+        runCatching { log.appendText("$ts,$actionTag,$p,exit=$code\n") }
     }
     sb.toString()
 }
