@@ -27,10 +27,10 @@ android {
         }
     }
 
-    // ✅ Enable Compose
+    // Compose ON
     buildFeatures { compose = true }
 
-    // ✅ Use Java/Kotlin 17 (recommended for Compose)
+    // Java/Kotlin 17
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -41,25 +41,30 @@ android {
 }
 
 dependencies {
-    // (these are from your version catalog — fine to keep)
+    // your catalog deps
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
 
-    // ✅ Jetpack Compose (explicit coordinates so we don't depend on your catalog)
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
-    implementation("androidx.activity:activity-compose:1.9.2")
+    // -------- Compose (BOM controls androidx.compose.* versions) --------
+    implementation(platform("androidx.compose:compose-bom:2024.09.01"))
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3:1.3.0")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // ✅ Coroutines + Lifecycle (for our suspend helpers)
+    // Not in the BOM → give explicit versions
+    implementation("androidx.activity:activity-compose:1.9.2")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Coroutines + Lifecycle
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
 
-    implementation("androidx.navigation:navigation-compose:2.7.7")
-    implementation("androidx.compose.material:material-icons-extended")
+    // --------------- DataStore (Preferences) ---------------
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

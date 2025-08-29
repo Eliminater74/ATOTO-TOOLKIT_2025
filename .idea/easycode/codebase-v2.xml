@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="com.obiscr.chatgpt.settings.EasyCodeState">
+    <option name="projectFiles" value="$PROJECT_DIR$/app/src/androidTest/java/dev/eliminater/atoto_toolkit/ExampleInstrumentedTest.kt;I:/GITHUB/ATOTO/app/src/main/java/dev/eliminater/atoto_toolkit/MainActivity.kt;I:/GITHUB/ATOTO/app/src/main/java/dev/eliminater/atoto_toolkit/QuickActions.kt;I:/GITHUB/ATOTO/app/src/main/java/dev/eliminater/atoto_toolkit/RootShell.kt;I:/GITHUB/ATOTO/app/src/test/java/dev/eliminater/atoto_toolkit/ExampleUnitTest.kt;I:/GITHUB/ATOTO/app/build.gradle.kts;I:/GITHUB/ATOTO/build.gradle.kts;I:/GITHUB/ATOTO/settings.gradle.kts" />
+  </component>
+</project>

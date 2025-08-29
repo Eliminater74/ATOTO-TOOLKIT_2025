@@ -1,73 +1,28 @@
 package dev.eliminater.atoto_toolkit
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import dev.eliminater.atoto_toolkit.settings.ThemePrefs
 import dev.eliminater.atoto_toolkit.ui.theme.ATOTOToolkitTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import dev.eliminater.atoto_toolkit.ui.theme.ThemeMode
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            // pick ONE:
-            // 1) force dark:
-            ATOTOToolkitTheme(darkTheme = true) {
+            val ctx = LocalContext.current
+            // Read the saved theme (SYSTEM on first run)
+            val mode: ThemeMode by ThemePrefs.themeFlow(ctx)
+                .collectAsState(initial = ThemeMode.SYSTEM)
+
+            ATOTOToolkitTheme(mode = mode) {
                 ToolkitApp()
             }
-            // 2) or follow system setting:
-            // ATOTOToolkitTheme(darkTheme = isSystemInDarkTheme()) { ToolkitApp() }
         }
     }
-}
-
-/** Shared snapshot helper used by QuickActions.kt (crash-proof). */
-suspend fun makeSnapshot(ctx: Context): String = withContext(Dispatchers.IO) {
-    fun ts() = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-
-    // Prefer app’s external files (no permission); fallback to internal.
-    val baseDir = ctx.getExternalFilesDir(null) ?: ctx.filesDir
-    val dir = File(baseDir, "state/backup-${ts()}").apply { mkdirs() }
-
-    // Safe shell helper
-    suspend fun runSafe(label: String, cmd: String, fallback: String = "<no output>"): String {
-        return try {
-            val out = RootShell.runSmart(cmd).second
-            if (out.isBlank()) fallback else out
-        } catch (t: Throwable) {
-            "$label error: ${t.message}"
-        }
-    }
-
-    val props = runSafe("getprop", "getprop")
-
-    // Try multiple package listing commands (works on emulator/device differences)
-    val candidates = listOf(
-        "pm list packages -f",
-        "cmd package list packages",
-        "pm list packages"
-    )
-    var pkgsOut = "<no packages output>"
-    for (c in candidates) {
-        try {
-            val out = RootShell.runSmart(c).second
-            if (out.isNotBlank()) { pkgsOut = out; break }
-        } catch (_: Throwable) { /* try next */ }
-    }
-
-    runCatching { File(dir, "getprop.txt").writeText(props) }
-        .onFailure { File(dir, "getprop.err.txt").writeText(it.stackTraceToString()) }
-
-    runCatching { File(dir, "packages_full.txt").writeText(pkgsOut) }
-        .onFailure { File(dir, "packages_full.err.txt").writeText(it.stackTraceToString()) }
-
-    "Snapshot saved: ${dir.absolutePath}\nFiles: getprop.txt, packages_full.txt"
 }
