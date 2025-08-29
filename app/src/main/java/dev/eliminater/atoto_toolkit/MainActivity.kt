@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
+import dev.eliminater.atoto_toolkit.ui.theme.ATOTOToolkitTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -14,8 +16,16 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Host the Navigation-based UI (bottom bar / rail)
-        setContent { ToolkitApp() }
+
+        setContent {
+            // pick ONE:
+            // 1) force dark:
+            ATOTOToolkitTheme(darkTheme = true) {
+                ToolkitApp()
+            }
+            // 2) or follow system setting:
+            // ATOTOToolkitTheme(darkTheme = isSystemInDarkTheme()) { ToolkitApp() }
+        }
     }
 }
 
