@@ -7,12 +7,11 @@ import dev.eliminater.atoto_toolkit.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-object ThemePrefs {
+class SettingsRepository(private val context: Context) {
     private val KEY_THEME = stringPreferencesKey("theme_mode")
 
-    /** Current theme as a Flow (defaults to SYSTEM). */
-    fun themeFlow(ctx: Context): Flow<ThemeMode> =
-        ctx.appDataStore.data.map { prefs ->
+    val themeMode: Flow<ThemeMode> =
+        context.appDataStore.data.map { prefs ->
             when (prefs[KEY_THEME]) {
                 ThemeMode.LIGHT.name -> ThemeMode.LIGHT
                 ThemeMode.DARK.name  -> ThemeMode.DARK
@@ -20,8 +19,9 @@ object ThemePrefs {
             }
         }
 
-    /** Persist a new theme. */
-    suspend fun set(ctx: Context, mode: ThemeMode) {
-        ctx.appDataStore.edit { prefs -> prefs[KEY_THEME] = mode.name }
+    suspend fun setTheme(mode: ThemeMode) {
+        context.appDataStore.edit { it[KEY_THEME] = mode.name }
     }
+
+    suspend fun resetThemeToSystem() = setTheme(ThemeMode.SYSTEM)
 }

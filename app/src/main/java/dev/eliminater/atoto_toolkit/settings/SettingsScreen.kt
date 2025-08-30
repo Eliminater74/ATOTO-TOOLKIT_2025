@@ -1,6 +1,7 @@
 package dev.eliminater.atoto_toolkit.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -15,14 +16,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.eliminater.atoto_toolkit.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
+import dev.eliminater.atoto_toolkit.ui.UiEventBus
+import dev.eliminater.atoto_toolkit.ui.UiEvent
 
 @Composable
 fun SettingsScreen() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Read the current mode (default to SYSTEM on first run)
+    // Read current theme (defaults to SYSTEM on first run)
     val mode by ThemePrefs.themeFlow(ctx).collectAsState(initial = ThemeMode.SYSTEM)
+
+    fun setMode(newMode: ThemeMode, msg: String) {
+        scope.launch {
+            ThemePrefs.set(ctx, newMode)
+            UiEventBus.emit(UiEvent.Snackbar(msg))
+        }
+    }
 
     ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
         Column(
@@ -37,17 +47,25 @@ fun SettingsScreen() {
             ThemeOptionRow(
                 label = "Follow system",
                 selected = mode == ThemeMode.SYSTEM
-            ) { scope.launch { ThemePrefs.set(ctx, ThemeMode.SYSTEM) } }
+            ) { setMode(ThemeMode.SYSTEM, "Theme set to System") }
 
             ThemeOptionRow(
                 label = "Light",
                 selected = mode == ThemeMode.LIGHT
-            ) { scope.launch { ThemePrefs.set(ctx, ThemeMode.LIGHT) } }
+            ) { setMode(ThemeMode.LIGHT, "Theme set to Light") }
 
             ThemeOptionRow(
                 label = "Dark",
                 selected = mode == ThemeMode.DARK
-            ) { scope.launch { ThemePrefs.set(ctx, ThemeMode.DARK) } }
+            ) { setMode(ThemeMode.DARK, "Theme set to Dark") }
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    setMode(ThemeMode.SYSTEM, "Theme reset to System")
+                }
+            ) { Text("Reset theme to System") }
         }
     }
 }
