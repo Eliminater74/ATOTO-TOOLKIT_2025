@@ -32,10 +32,14 @@ object RootShell {
 
     /** Check if Shizuku is available and we have permission. */
     fun isShizukuAvailable(): Boolean {
-        // Simple check: can we access the class?
-        // Real check requires binding, but for now let's assume if the dependency is there
-        // and the app is installed, we can try.
-        return true
+        return try {
+            // Check if service is bound
+            Shizuku.pingBinder()
+        } catch (e: NoClassDefFoundError) {
+            false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /** Prefer Root -> Shizuku -> Shell. */
@@ -49,11 +53,10 @@ object RootShell {
 
     suspend fun runShizuku(cmd: String): Pair<Int, String> = withContext(Dispatchers.IO) {
         try {
-            // rikka.shizuku.Shizuku.newProcess(String[], String[], String)
-            // We use reflection or direct call if imports work. 
-            // Since we added the dependency, we can try using the class directly if we import it,
-            // or fully qualified name.
-            val p = Shizuku.newProcess(arrayOf("sh", "-c", cmd), null, null)
+            // Use reflection to bypass potential visibility issues with the API
+            val m = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+            m.isAccessible = true
+            val p = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
             val sb = StringBuilder()
             BufferedReader(InputStreamReader(p.inputStream)).use { it.lineSequence().forEach(sb::appendLine) }
             BufferedReader(InputStreamReader(p.errorStream)).use { it.lineSequence().forEach(sb::appendLine) }

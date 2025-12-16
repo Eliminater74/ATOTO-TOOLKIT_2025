@@ -9,10 +9,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,7 +33,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private data class PkgItem(val pkg: String, val label: String)
+internal data class PkgItem(val pkg: String, val label: String)
 
 /* ---------- Safety sets ---------- */
 
@@ -276,7 +280,7 @@ fun DebloaterCard() {
 }
 
 @Composable
-fun AppItemRow(
+internal fun AppItemRow(
     item: PkgItem,
     isSelected: Boolean,
     isProtected: Boolean,
