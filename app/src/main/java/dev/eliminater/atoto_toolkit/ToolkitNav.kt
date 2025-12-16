@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
@@ -19,11 +20,18 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +71,8 @@ private val destinations = listOf(
     Dest.Status, Dest.Quick, Dest.Launchers, Dest.Radio, Dest.Recs, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
 )
 
+enum class DeviceWarning { NOT_ATOTO, NOT_S8 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolkitApp() {
@@ -70,6 +80,42 @@ fun ToolkitApp() {
     val backStack by nav.currentBackStackEntryAsState()
     val currentDest: NavDestination? = backStack?.destination
     
+    // Device Safety Check
+    var warningType by remember { mutableStateOf<DeviceWarning?>(null) }
+    
+    LaunchedEffect(Unit) {
+        if (!DeviceUtils.isAtotoDevice()) {
+            warningType = DeviceWarning.NOT_ATOTO
+        } else if (!DeviceUtils.isS8Device()) {
+            warningType = DeviceWarning.NOT_S8
+        }
+    }
+    
+    if (warningType != null) {
+        AlertDialog(
+            onDismissRequest = { warningType = null },
+            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Compatibility Warning") },
+            text = {
+                Text(
+                    when (warningType) {
+                        DeviceWarning.NOT_ATOTO -> "This app is designed SPECIFICALLY for ATOTO S8 head units. \n\nYour device appears to be a ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}.\n\nUsing these tools on a non-ATOTO device may cause crashes or unexpected behavior. Proceed with caution."
+                        DeviceWarning.NOT_S8 -> "This app was built and tested for the ATOTO S8 (Gen 2).\n\nYou appear to be using a different ATOTO model (${android.os.Build.MODEL}). Some features (like Root Guide or specific debloater lists) may not apply to your unit."
+                        else -> ""
+                    }
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { warningType = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("I Understand, Proceed")
+                }
+            }
+        )
+    }
+
     // Core layout: Row with Sidebar on left, Content on right
     Row(
         modifier = Modifier
