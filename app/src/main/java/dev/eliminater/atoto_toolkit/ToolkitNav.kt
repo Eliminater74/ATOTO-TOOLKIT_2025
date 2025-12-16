@@ -52,6 +52,7 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Help      : Dest("help",      "Help",      Icons.Outlined.HelpOutline)
     data object About     : Dest("about",     "About",     Icons.Outlined.Info)
     data object Settings  : Dest("settings",  "Settings",  Icons.Outlined.Settings)
+    data object RootInfo  : Dest("root_guide", "Root Guide", Icons.Outlined.Info) // Not in sidebar
 }
 
 private val destinations = listOf(
@@ -123,9 +124,12 @@ fun ToolkitApp() {
                 composable(Dest.Debloat.route)   { DebloaterCard() }
                 composable(Dest.Backup.route)    { BackupCard() }
                 composable(Dest.Wireless.route)  { WirelessAdbCard() }
-                composable(Dest.Help.route)      { HelpCard() }
+                composable(Dest.Help.route)      { 
+                    HelpCard(onOpenRootGuide = { nav.navigateSingleTopTo(Dest.RootInfo.route) }) 
+                }
                 composable(Dest.About.route)     { AboutCard() }
                 composable(Dest.Settings.route)  { SettingsScreen() }
+                composable(Dest.RootInfo.route)  { RootGuideScreen(onBack = { nav.popBackStack() }) }
             }
         }
     }

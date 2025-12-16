@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun HelpCard() {
+fun HelpCard(onOpenRootGuide: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -32,6 +32,12 @@ fun HelpCard() {
         HelpSection(
             title = "Root Access",
             content = "For full functionality, your head unit should be rooted. This allows the app to uninstall system packages and backup data directly."
+        )
+        
+        dev.eliminater.atoto_toolkit.ui.components.GradientButton(
+            text = "Read S8 Gen 2 Rooting Guide",
+            onClick = onOpenRootGuide,
+            modifier = Modifier.fillMaxWidth()
         )
 
         HelpSection(
