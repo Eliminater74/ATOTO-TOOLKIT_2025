@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
@@ -49,6 +50,7 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Debloat   : Dest("debloat",   "Debloat",   Icons.Outlined.Delete)
     data object Backup    : Dest("backup",    "Backup",    Icons.Outlined.Save)
     data object Wireless  : Dest("wireless",  "ADB Wi-Fi", Icons.Outlined.Wifi)
+    data object Radio     : Dest("radio",     "Radio",     Icons.Filled.Radio) // ADDED THIS
     data object Help      : Dest("help",      "Help",      Icons.Outlined.HelpOutline)
     data object About     : Dest("about",     "About",     Icons.Outlined.Info)
     data object Settings  : Dest("settings",  "Settings",  Icons.Outlined.Settings)
@@ -56,7 +58,7 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
 }
 
 private val destinations = listOf(
-    Dest.Status, Dest.Quick, Dest.Launchers, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
+    Dest.Status, Dest.Quick, Dest.Launchers, Dest.Radio, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,6 +126,7 @@ fun ToolkitApp() {
                 composable(Dest.Debloat.route)   { DebloaterCard() }
                 composable(Dest.Backup.route)    { BackupCard() }
                 composable(Dest.Wireless.route)  { WirelessAdbCard() }
+                composable(Dest.Radio.route)     { RadioCard() } // ADDED THIS
                 composable(Dest.Help.route)      { 
                     HelpCard(onOpenRootGuide = { nav.navigateSingleTopTo(Dest.RootInfo.route) }) 
                 }
