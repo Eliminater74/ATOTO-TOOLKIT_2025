@@ -16,6 +16,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,166 +79,245 @@ fun DebloaterCard() {
     var busy by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf("") }
     var hasRoot by remember { mutableStateOf(false) }
+    var hasShizuku by remember { mutableStateOf(false) }
 
     // Load once
     LaunchedEffect(Unit) {
         hasRoot = RootShell.isRootAvailable()
+        hasShizuku = RootShell.isShizukuAvailable()
         all = loadPackages(ctx)
     }
 
-    ElevatedCard {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Debloater", style = MaterialTheme.typography.titleMedium)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Header
+        Text(
+            "App Debloater", 
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
 
+        // Search and Actions Bar
+        Row(
+            modifier = Modifier.fillMaxWidth(), 
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             OutlinedTextField(
                 value = query, onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Search by app / package") },
-                singleLine = true
+                modifier = Modifier.weight(1f),
+                label = { Text("Search apps...") },
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Search, null) }
             )
+            
+            // Refresh
+            IconButton(onClick = { scope.launch { all = loadPackages(ctx) } }) {
+                Icon(Icons.Default.Refresh, "Refresh")
+            }
+        }
 
-            // Row 1: selection helpers
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { selected = emptySet() }) { Text("Clear selection") }
-                OutlinedButton(onClick = {
-                    // respect search filter and protected guard
-                    selected = filtered(all, query)
+        // Selection Tools
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+            FilterChip(
+                selected = selected.isNotEmpty(),
+                onClick = { selected = emptySet() },
+                label = { Text("Clear") },
+                leadingIcon = { Icon(Icons.Default.Clear, null) }
+            )
+            FilterChip(
+                selected = false,
+                onClick = { 
+                     selected = filtered(all, query)
                         .map { it.pkg }
                         .filterNot { it in PROTECTED }
                         .toSet()
-                }) { Text("Select all (filtered)") }
-
-                Spacer(Modifier.weight(1f))
-
-                OutlinedButton(onClick = {
-                    scope.launch { all = loadPackages(ctx) }
-                }) { Text("Refresh") }
-            }
-
-            // Row 2: suggestions / profiles
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = {
-                    val safe = SUGGESTED_SAFE
-                    selected = filtered(all, query)
-                        .map { it.pkg }
-                        .filter { it in safe && it !in PROTECTED }
-                        .toSet()
-                }) { Text("Select suggested (safe)") }
-
-                OutlinedButton(onClick = {
-                    selected = filtered(all, query)
-                        .map { it.pkg }
-                        .filter { it in PROFILE_CONSERVATIVE && it !in PROTECTED }
-                        .toSet()
-                }) { Text("Apply profile: Conservative") }
-
-                OutlinedButton(onClick = {
-                    selected = filtered(all, query)
-                        .map { it.pkg }
-                        .filter { it in PROFILE_NO_RADIO_MIRRORING && it !in PROTECTED }
-                        .toSet()
-                }) { Text("Apply profile: No Radio & Mirroring") }
-            }
-
-            // Actions
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    enabled = !busy && selected.isNotEmpty() && hasRoot,
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            info = runPkgs(
-                                ctx, selected,
-                                "pm disable-user --user 0 %s",
-                                "disable-user"
-                            )
-                            busy = false
-                        }
-                    }
-                ) { Text("Disable (root)") }
-
-                Button(
-                    enabled = !busy && selected.isNotEmpty() && hasRoot,
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            info = runPkgs(
-                                ctx, selected,
-                                "pm uninstall --user 0 %s",
-                                "uninstall-user0"
-                            )
-                            busy = false
-                        }
-                    }
-                ) { Text("Uninstall for user 0 (root)") }
-
-                OutlinedButton(
-                    enabled = !busy && selected.isNotEmpty(),
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            info = runPkgs(
-                                ctx, selected,
-                                "cmd package install-existing %s && pm enable %s",
-                                "restore"
-                            )
-                            busy = false
-                        }
-                    }
-                ) { Text("Restore") }
-            }
-
-            if (busy) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-
-            Text(
-                text = if (info.isBlank()) "—" else info,
-                style = MaterialTheme.typography.bodySmall
+                },
+                label = { Text("Select All (Safe)") }
             )
+            
+            // Profiles
+            SuggestionChip(
+                onClick = { 
+                    selected = filtered(all, query)
+                        .map { it.pkg }
+                        .filter { it in SUGGESTED_SAFE && it !in PROTECTED }
+                        .toSet() 
+                },
+                label = { Text("Safe Bloat") }
+            )
+        }
 
-            Divider()
+        Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Package list
-            val shown = filtered(all, query)
-            Text("${shown.size} apps", style = MaterialTheme.typography.labelMedium)
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 160.dp, max = 420.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(shown, key = { it.pkg }) { item ->
-                    val checked = selected.contains(item.pkg)
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selected = if (checked) selected - item.pkg else selected + item.pkg
-                            }
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { on ->
-                                selected = if (on) selected + item.pkg else selected - item.pkg
+        // List
+        val shown = filtered(all, query)
+        
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+        ) {
+            if (shown.isEmpty()) {
+                Text(
+                    "No apps found.", 
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(shown, key = { it.pkg }) { item ->
+                        val isSelected = selected.contains(item.pkg)
+                        AppItemRow(
+                            item = item,
+                            isSelected = isSelected,
+                            isProtected = item.pkg in PROTECTED,
+                            onToggle = { 
+                                selected = if (isSelected) selected - item.pkg else selected + item.pkg
                             }
                         )
-                        Column(Modifier.weight(1f)) {
-                            Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            val protectedMark = if (item.pkg in PROTECTED) "  (protected)" else ""
-                            Text(item.pkg + protectedMark, style = MaterialTheme.typography.labelSmall)
-                        }
                     }
                 }
             }
+            
+            if (busy) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+        }
 
-            if (!hasRoot) {
+        // Action Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val canAct = !busy && selected.isNotEmpty() && (hasRoot || hasShizuku)
+            
+            dev.eliminater.atoto_toolkit.ui.components.GradientButton(
+                text = "Disable",
+                enabled = canAct,
+                onClick = {
+                    scope.launch {
+                        busy = true
+                        info = runPkgs(ctx, selected, "pm disable-user --user 0 %s", "disable")
+                        busy = false
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            // Uninstall is riskier, maybe valid for root only or requires special care
+            if (hasRoot) {
+                Button(
+                    enabled = canAct,
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            info = runPkgs(ctx, selected, "pm uninstall --user 0 %s", "uninstall")
+                            busy = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                   Text("Delete")
+                }
+            }
+
+            OutlinedButton(
+                enabled = !busy && selected.isNotEmpty(),
+                onClick = {
+                    scope.launch {
+                        busy = true
+                        info = runPkgs(ctx, selected, "cmd package install-existing %s && pm enable %s", "restore")
+                        busy = false
+                    }
+                }
+            ) {
+                Text("Restore")
+            }
+        }
+        
+        if (info.isNotBlank()) {
+            Text(
+                text = info,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        if (!hasRoot && !hasShizuku) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Root or Shizuku required for modifications.",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppItemRow(
+    item: PkgItem,
+    isSelected: Boolean,
+    isProtected: Boolean,
+    onToggle: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
+                             else MaterialTheme.colorScheme.surface
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
+            Spacer(Modifier.width(8.dp))
+            Column {
                 Text(
-                    "Tip: Without root you can still use Restore, or pair with Shizuku/Wireless ADB for pm commands.",
-                    style = MaterialTheme.typography.bodySmall
+                    item.label, 
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer 
+                            else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    item.pkg, 
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=0.7f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            if (isProtected) {
+                Icon(
+                    Icons.Default.Lock, 
+                    "Protected", 
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.outline
                 )
             }
         }

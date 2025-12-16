@@ -21,8 +21,26 @@ fun ATOTOToolkitTheme(
         ThemeMode.LIGHT  -> false
     }
 
+    val colors = if (dark) {
+        darkColorScheme(
+            primary = PrimaryBlue,
+            secondary = SecondaryTeal,
+            background = DarkBackground,
+            surface = SurfaceDark,
+            onBackground = TextWhite,
+            onSurface = TextWhite
+        )
+    } else {
+        // Keep light theme for now, or force dark?
+        // Let's make light theme at least consistent
+        lightColorScheme(
+            primary = PrimaryBlue,
+            secondary = SecondaryTeal
+        )
+    }
+
     MaterialTheme(
-        colorScheme = if (dark) darkColorScheme() else lightColorScheme(),
+        colorScheme = colors,
         content = content
     )
 }
