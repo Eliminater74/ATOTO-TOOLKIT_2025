@@ -174,40 +174,64 @@ fun DebloaterCard() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val canAct = !busy && selected.isNotEmpty() && (hasRoot || hasShizuku)
+            val hasPrivilege = hasRoot || hasShizuku
+            val canAct = !busy && selected.isNotEmpty()
             
             dev.eliminater.atoto_toolkit.ui.components.GradientButton(
-                text = "Disable",
+                text = if (hasPrivilege) "Disable Selected" else "Manual Disable",
                 enabled = canAct,
                 onClick = {
-                    scope.launch {
-                        busy = true
-                        info = runPkgs(ctx, selected, "pm disable-user --user 0 %s", "disable")
-                        busy = false
+                    if (hasPrivilege) {
+                        scope.launch {
+                            busy = true
+                            info = runPkgs(ctx, selected, "pm disable-user --user 0 %s", "disable")
+                            busy = false
+                        }
+                    } else {
+                        // Manual Mode
+                        if (selected.size > 1) {
+                            info = "For manual disable, please select one app at a time."
+                        } else {
+                            val pkg = selected.first()
+                            try {
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = android.net.Uri.fromParts("package", pkg, null)
+                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                ctx.startActivity(intent)
+                                info = "Opened Settings for $pkg. Click 'Disable' there."
+                            } catch (e: Exception) {
+                                info = "Error opening settings: ${e.message}"
+                            }
+                        }
                     }
                 },
                 modifier = Modifier.weight(1f)
             )
 
-            // Uninstall is riskier, maybe valid for root only or requires special care
-            if (hasRoot) {
+            // Uninstall is strictly Root/Shizuku only
+            if (hasPrivilege) {
                 Button(
                     enabled = canAct,
                     onClick = {
                         scope.launch {
                             busy = true
-                            info = runPkgs(ctx, selected, "pm uninstall --user 0 %s", "uninstall")
+                            // If root using pm uninstall, if Shizuku might default to disable if uninstall strictly needs root-root
+                            val cmd = if (hasRoot) "pm uninstall --user 0 %s" else "pm disable-user --user 0 %s" // Shizuku usually fails silent uninstall, safer to disable or prompt
+                            val label = if (hasRoot) "uninstall" else "disable (shizuku)"
+                            
+                            info = runPkgs(ctx, selected, cmd, label)
                             busy = false
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                   Text("Delete")
+                   Text(if (hasRoot) "Uninstall" else "Disable+")
                 }
             }
 
             OutlinedButton(
-                enabled = !busy && selected.isNotEmpty(),
+                enabled = !busy && selected.isNotEmpty() && hasPrivilege, // Only automated restore if privileged
                 onClick = {
                     scope.launch {
                         busy = true
@@ -232,16 +256,16 @@ fun DebloaterCard() {
         
         if (!hasRoot && !hasShizuku) {
             Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
+                color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Root or Shizuku required for modifications.",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.labelMedium
+                        "No Root/Shizuku detected. 'Manual Disable' will take you to System Settings to disable apps one by one.",
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
