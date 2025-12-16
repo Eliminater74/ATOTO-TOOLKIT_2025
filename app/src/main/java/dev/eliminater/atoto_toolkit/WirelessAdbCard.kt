@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@Composable
 @Composable
 fun WirelessAdbCard() {
     val ctx = LocalContext.current
@@ -27,8 +29,8 @@ fun WirelessAdbCard() {
         withContext(Dispatchers.IO) {
             rootAvailable = RootShell.isRootAvailable()
             // Check if port is set
-            val prop = RootShell.runSmart("getprop service.adb.tcp.port")
-            val port = prop.output.map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: "-1"
+            val result = RootShell.runSmart("getprop service.adb.tcp.port")
+            val port = result.second.lines().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: "-1"
             isAdbEnabled = port == "5555"
             adbPort = if (isAdbEnabled) "Active (5555)" else "Inactive (USB)"
         }
@@ -46,8 +48,8 @@ fun WirelessAdbCard() {
                 RootShell.runSmart("start adbd")
             }
             // Refresh
-            val prop = RootShell.runSmart("getprop service.adb.tcp.port")
-            val port = prop.output.map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: "-1"
+            val result = RootShell.runSmart("getprop service.adb.tcp.port")
+            val port = result.second.lines().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: "-1"
             isAdbEnabled = port == "5555"
             adbPort = if (isAdbEnabled) "Active (5555)" else "Inactive (USB)"
         }
