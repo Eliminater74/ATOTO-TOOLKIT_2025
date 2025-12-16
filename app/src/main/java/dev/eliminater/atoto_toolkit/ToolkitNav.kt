@@ -42,6 +42,7 @@ import dev.eliminater.atoto_toolkit.settings.SettingsScreen
 
 /** App destinations (add more as we grow). */
 sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
+    data object Status    : Dest("status",    "Status",    Icons.Outlined.Info)
     data object Quick     : Dest("quick",     "Quick",     Icons.Outlined.Bolt)
     data object Launchers : Dest("launchers", "Launchers", Icons.Outlined.Home)
     data object Shizuku   : Dest("shizuku",   "Shizuku",   Icons.Outlined.Power)
@@ -54,7 +55,7 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
 }
 
 private val destinations = listOf(
-    Dest.Quick, Dest.Launchers, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
+    Dest.Status, Dest.Quick, Dest.Launchers, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,9 +113,10 @@ fun ToolkitApp() {
         ) {
             NavHost(
                 navController = nav,
-                startDestination = Dest.Quick.route,
+                startDestination = Dest.Status.route,
                 modifier = Modifier.fillMaxSize()
             ) {
+                composable(Dest.Status.route)    { StatusCard() }
                 composable(Dest.Quick.route)     { QuickActions() }
                 composable(Dest.Launchers.route) { LaunchersCard() }
                 composable(Dest.Shizuku.route)   { ShizukuCard() }
