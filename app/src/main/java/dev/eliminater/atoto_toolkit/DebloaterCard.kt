@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -33,44 +34,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-internal data class PkgItem(val pkg: String, val label: String)
-
-/* ---------- Safety sets ---------- */
-
-/** Hard “do-not-touch” list — vendor services + Android/Google essentials */
-private val PROTECTED = setOf(
-    // FYT / ATOTO glue
-    "com.syu.cs","com.syu.ms","com.syu.ps","com.syu.ss","com.syu.us",
-    "com.syu.canbus","com.syu.protocolupdate","com.syu.bt","com.syu.steer",
-    "com.syu.settings","com.syu.rearcamera",
-    // ATOTO keep-alive & GPS
-    "com.atoto.keepaliveservice","org.atoto.gps",
-    // Android core / critical Google services (partial, keep conservative)
-    "android","com.android.systemui","com.android.settings","com.android.permissioncontroller",
-    "com.android.providers.settings","com.android.providers.contacts",
-    "com.google.android.gms","com.google.android.gsf"
+internal data class PkgItem(
+    val pkg: String, 
+    val label: String,
+    val description: String,
+    val safety: SafetyLevel
 )
 
-/** Suggested “safe removals”: light vendor bloat/UI */
-private val SUGGESTED_SAFE = setOf(
-    "com.syu.music","com.syu.video","com.syu.gallery","com.syu.filemanager",
-    "com.syu.av","com.syu.onekeynavi","com.android.partnerbrowsercustomizations.example"
-)
-
-/** Profile: Conservative = SUGGESTED_SAFE */
-private val PROFILE_CONSERVATIVE = SUGGESTED_SAFE
-
-/** Profile: No Radio & Mirroring (only if you truly don’t use them) */
-private val PROFILE_NO_RADIO_MIRRORING = PROFILE_CONSERVATIVE + setOf(
-    "com.syu.carradio", // using NavRadio+ instead
-    "net.easyconn","com.syu.carlink","com.syu.carmark","com.synmoon.carkit",
-    // extra launchers (disable only after Nova is set as HOME and reboot-tested)
-    "com.unisoc.launcher.customization","com.android.launcher3",
-    "com.android.launcher6","com.android.launcher8"
-    // add "com.google.android.apps.nexuslauncher" if you also want to hide Pixel Launcher
-)
-
-/* ---------- UI ---------- */
+private val PROTECTED_SET = PackageDB.KNOWN_PACKAGES.filter { it.value.safety == SafetyLevel.UNSAFE }.keys
 
 @Composable
 fun DebloaterCard() {
@@ -141,7 +112,7 @@ fun DebloaterCard() {
                 onClick = { 
                      selected = filtered(all, query)
                         .map { it.pkg }
-                        .filterNot { it in PROTECTED }
+                        .filter { all.find { p -> p.pkg == it }?.safety != SafetyLevel.UNSAFE }
                         .toSet()
                 },
                 label = { Text("Select All (Safe)") }
@@ -152,7 +123,7 @@ fun DebloaterCard() {
                 onClick = { 
                     selected = filtered(all, query)
                         .map { it.pkg }
-                        .filter { it in SUGGESTED_SAFE && it !in PROTECTED }
+                        .filter { all.find { p -> p.pkg == it }?.safety == SafetyLevel.SAFE }
                         .toSet() 
                 },
                 label = { Text("Safe Bloat") }
@@ -185,7 +156,6 @@ fun DebloaterCard() {
                         AppItemRow(
                             item = item,
                             isSelected = isSelected,
-                            isProtected = item.pkg in PROTECTED,
                             onToggle = { 
                                 selected = if (isSelected) selected - item.pkg else selected + item.pkg
                             }
@@ -283,52 +253,79 @@ fun DebloaterCard() {
 internal fun AppItemRow(
     item: PkgItem,
     isSelected: Boolean,
-    isProtected: Boolean,
     onToggle: () -> Unit
 ) {
+    val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
+                         else MaterialTheme.colorScheme.surface
+
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
-                             else MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onToggle() }
     ) {
-        Row(
-            Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
-            Spacer(Modifier.width(8.dp))
-            Column {
-                Text(
-                    item.label, 
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer 
-                            else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    item.pkg, 
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=0.7f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        item.label, 
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer 
+                                else MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        item.pkg, 
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=0.7f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Safety Badge
+                val (badgeColor, badgeText) = when (item.safety) {
+                    SafetyLevel.SAFE -> MaterialTheme.colorScheme.primary to "SAFE"
+                    SafetyLevel.CAUTION -> MaterialTheme.colorScheme.tertiary to "CAUTION"
+                    SafetyLevel.UNSAFE -> MaterialTheme.colorScheme.error to "UNSAFE"
+                    SafetyLevel.UNKNOWN -> MaterialTheme.colorScheme.outline to "UNKNOWN"
+                }
+                
+                Surface(
+                    color = badgeColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, badgeColor.copy(alpha=0.3f))
+                ) {
+                    Text(
+                        text = badgeText,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = badgeColor
+                    )
+                }
             }
-            Spacer(Modifier.weight(1f))
-            if (isProtected) {
-                Icon(
-                    Icons.Default.Lock, 
-                    "Protected", 
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
+            
+            if (item.description.isNotBlank()) {
+                Divider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.2f))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Info, 
+                        "Info", 
+                        modifier = Modifier.size(14.dp), 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        item.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
-
-/* ---------- Helpers ---------- */
 
 private fun filtered(list: List<PkgItem>, q: String): List<PkgItem> {
     if (q.isBlank()) return list
@@ -345,11 +342,19 @@ private suspend fun loadPackages(ctx: Context): List<PkgItem> = withContext(Disp
         pm.getInstalledPackages(0)
     }
     infos.map { pi ->
-        // applicationInfo may be null on newer SDKs; fall back to package name
-        val label = pi.applicationInfo?.let { ai ->
+        val p = pi.packageName
+        
+        // Get friendly label
+        var label = pi.applicationInfo?.let { ai ->
             runCatching { pm.getApplicationLabel(ai).toString() }.getOrNull()
-        } ?: pi.packageName
-        PkgItem(pi.packageName, label)
+        } ?: p
+
+        // Lookup metadata
+        val known = PackageDB.KNOWN_PACKAGES[p]
+        val desc = known?.description ?: ""
+        val saf = known?.safety ?: SafetyLevel.UNKNOWN
+        
+        PkgItem(p, label, desc, saf)
     }.sortedBy { it.label.lowercase(Locale.ROOT) }
 }
 
@@ -369,7 +374,8 @@ private suspend fun runPkgs(
     val sb = StringBuilder()
 
     for (p in pkgs) {
-        if (p in PROTECTED && actionTag != "restore") {
+        val known = PackageDB.KNOWN_PACKAGES[p]
+        if (known?.safety == SafetyLevel.UNSAFE && actionTag != "restore") {
             sb.appendLine("$p → SKIP (protected)")
             runCatching { log.appendText("$ts,$actionTag,$p,skip-protected\n") }
             continue
