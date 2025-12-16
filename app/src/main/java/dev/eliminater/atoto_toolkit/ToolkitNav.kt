@@ -3,11 +3,15 @@ package dev.eliminater.atoto_toolkit
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Power
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
@@ -44,11 +48,13 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Debloat   : Dest("debloat",   "Debloat",   Icons.Outlined.Delete)
     data object Backup    : Dest("backup",    "Backup",    Icons.Outlined.Save)
     data object Wireless  : Dest("wireless",  "ADB Wi-Fi", Icons.Outlined.Wifi)
+    data object Help      : Dest("help",      "Help",      Icons.Outlined.HelpOutline)
+    data object About     : Dest("about",     "About",     Icons.Outlined.Info)
     data object Settings  : Dest("settings",  "Settings",  Icons.Outlined.Settings)
 }
 
 private val destinations = listOf(
-    Dest.Quick, Dest.Launchers, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Settings
+    Dest.Quick, Dest.Launchers, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +76,7 @@ fun ToolkitApp() {
                 .width(100.dp) // Wider touch targets
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.surface)
+                .verticalScroll(rememberScrollState())
                 .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -114,6 +121,8 @@ fun ToolkitApp() {
                 composable(Dest.Debloat.route)   { DebloaterCard() }
                 composable(Dest.Backup.route)    { BackupCard() }
                 composable(Dest.Wireless.route)  { WirelessAdbCard() }
+                composable(Dest.Help.route)      { HelpCard() }
+                composable(Dest.About.route)     { AboutCard() }
                 composable(Dest.Settings.route)  { SettingsScreen() }
             }
         }
