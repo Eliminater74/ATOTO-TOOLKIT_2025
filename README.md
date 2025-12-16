@@ -1,8 +1,30 @@
 # ATOTO Toolkit 🚗💨
 
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FEliminater74%2FATOTO-TOOLKIT&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visitors&edge_flat=false)](https://hits.seeyoufarm.com)
+<div align="center">
+
+![Hits](https://img.shields.io/endpoint?url=https://hits.dwyl.com/Eliminater74/ATOTO-TOOLKIT.json&style=for-the-badge&label=Hits&color=success)
+![Build Status](https://img.shields.io/badge/build-passing-success?style=for-the-badge)
+![Downloads](https://img.shields.io/github/downloads/Eliminater74/ATOTO-TOOLKIT/total?style=for-the-badge&color=yellow)
+![Release](https://img.shields.io/github/release-date/Eliminater74/ATOTO-TOOLKIT?style=for-the-badge&color=orange)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue?style=for-the-badge&logo=paypal)](https://paypal.me/YOUR_PAYPAL_HANDLE)
+
+</div>
 
 The **ATOTO Toolkit** is an all-in-one comprehensive utility app designed specifically for **ATOTO S8 (Gen 2)** Android head units (and compatible devices). It provides essential tools to unlock the full potential of your car's infotainment system, streamlining customization, debloating, and optimization.
+
+## 📸 Screenshots
+
+<div align="center">
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175548.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175452.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175801.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175739.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175721.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175659.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175641.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175619.png" width="30%" />
+  <img src="resources/Screenshots/Screenshot%202025-12-16%20175900.png" width="30%" />
+</div>
 
 ## ✨ Key Features
 
