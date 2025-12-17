@@ -110,7 +110,8 @@ private fun ThemeOptionRow(
 
 
 
-    }
+
+
 
     @Composable
     fun ForceAdbCard() {
@@ -144,7 +145,7 @@ private fun ThemeOptionRow(
         }
     }
 
-    private fun forceEnableAdb(ctx: android.content.Context) {
+    private suspend fun forceEnableAdb(ctx: android.content.Context) {
         val sb = StringBuilder()
         
         // Method 1: Settings API (Global)
@@ -167,6 +168,10 @@ private fun ThemeOptionRow(
         sb.append("Prop sys.usb.config: " + runShell("setprop sys.usb.config adb") + "\n")
         sb.append("Prop persist.sys.usb.config: " + runShell("setprop persist.sys.usb.config adb") + "\n")
         sb.append("Prop adb.enable: " + runShell("setprop persist.service.adb.enable 1") + "\n")
+        
+        // Method 4: Wireless ADB (The PC-Free Grail)
+        sb.append("Prop tcp.port: " + runShell("setprop service.adb.tcp.port 5555") + "\n")
+        sb.append("Prop tcp.port (persist): " + runShell("setprop persist.adb.tcp.port 5555") + "\n")
         
         UiEventBus.emit(UiEvent.Snackbar("Force Attempt Complete:\n$sb"))
     }
