@@ -19,6 +19,10 @@ import kotlinx.coroutines.launch
 import dev.eliminater.atoto_toolkit.ui.UiEventBus
 import dev.eliminater.atoto_toolkit.ui.UiEvent
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 
@@ -102,10 +106,23 @@ private fun ThemeOptionRow(
     }
 }
 
+
+
 @Composable
 fun SettingsSnifferCard() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    
+    // Permission Launcher
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+             performDump(scope)
+        } else {
+             scope.launch { UiEventBus.emit(UiEvent.Snackbar("Storage permission required to save dump.")) }
+        }
+    }
 
     ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
         Column(
@@ -123,36 +140,48 @@ fun SettingsSnifferCard() {
 
             Button(
                 onClick = {
-                    scope.launch {
-                        val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
-                        val filename = "atoto_settings_dump_$timestamp.txt"
-                        val file = java.io.File("/sdcard/Download/$filename")
-
-                        try {
-                            file.writeText("=== GLOBAL ===\n")
-                            // Note: We can't easily iterate all keys via public API without reflection or shell. 
-                            // Using shell 'settings list' is most reliable for a raw dump.
-                            val global = runShell("settings list global")
-                            file.appendText(global + "\n\n")
-
-                            file.writeText("=== SYSTEM ===\n")
-                            val system = runShell("settings list system")
-                            file.appendText(system + "\n\n")
-
-                            file.writeText("=== SECURE ===\n")
-                            val secure = runShell("settings list secure")
-                            file.appendText(secure + "\n\n")
-
-                            UiEventBus.emit(UiEvent.Snackbar("Saved to Downloads/$filename"))
-                        } catch (e: Exception) {
-                            UiEventBus.emit(UiEvent.Snackbar("Error: ${e.message}"))
-                            e.printStackTrace()
-                        }
+                    // Check logic
+                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q || 
+                        androidx.core.content.ContextCompat.checkSelfPermission(ctx, Manifest.permission.WRITE_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        performDump(scope)
+                    } else {
+                        launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     }
                 }
             ) {
                 Text("Snapshot Settings (Dump to File)")
             }
+        }
+    }
+}
+
+private fun performDump(scope: kotlinx.coroutines.CoroutineScope) {
+    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+        val filename = "atoto_settings_dump_$timestamp.txt"
+        // Try standard SD card path first, fallback if needed
+        val file = java.io.File("/sdcard/Download/$filename")
+        
+        // Ensure directory exists
+        file.parentFile?.mkdirs()
+
+        try {
+            file.writeText("=== GLOBAL ===\n")
+            val global = runShell("settings list global")
+            file.appendText(global + "\n\n")
+
+            file.writeText("=== SYSTEM ===\n")
+            val system = runShell("settings list system")
+            file.appendText(system + "\n\n")
+
+            file.writeText("=== SECURE ===\n")
+            val secure = runShell("settings list secure")
+            file.appendText(secure + "\n\n")
+
+            UiEventBus.emit(UiEvent.Snackbar("Saved to Downloads/$filename"))
+        } catch (e: Exception) {
+            UiEventBus.emit(UiEvent.Snackbar("Error: ${e.message}"))
+            e.printStackTrace()
         }
     }
 }
