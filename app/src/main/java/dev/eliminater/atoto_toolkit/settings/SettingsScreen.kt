@@ -210,6 +210,11 @@ private fun writeDataToFile(ctx: android.content.Context, file: java.io.File) {
         writer.write("--- SECURE ---\n")
         writer.write(runShell("settings list secure"))
         writer.write("\n\n")
+
+        writer.write("=== METHOD 3: SYSTEM PROPERTIES (getprop) ===\n")
+        writer.write("This reveals low-level driver configs like sys.usb.config\n\n")
+        writer.write(runShell("getprop"))
+        writer.write("\n\n")
     }
 }
 
