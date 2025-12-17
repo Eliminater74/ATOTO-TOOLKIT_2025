@@ -81,6 +81,8 @@ fun SettingsScreen() {
             }
         }
 
+        ForceAdbCard()
+        Spacer(Modifier.height(16.dp))
         SettingsSnifferCard()
         
         // Add extra padding at bottom for scrolling
@@ -108,37 +110,100 @@ private fun ThemeOptionRow(
 
 
 
-@Composable
-fun SettingsSnifferCard() {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    
-    // Launcher not needed for app-specific paths
-    
-    ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Research Tools", style = MaterialTheme.typography.titleMedium)
-            Text("Settings Sniffer", style = MaterialTheme.typography.titleLarge)
-            Text(
-                "Dump system settings to App Storage.\nLocation: /sdcard/Android/data/.../files/Download/",
-                style = MaterialTheme.typography.bodyMedium
-            )
+    }
 
-            Button(
-                onClick = {
-                    performDumpDirect(ctx, scope)
-                }
+    @Composable
+    fun ForceAdbCard() {
+        val ctx = LocalContext.current
+        val scope = rememberCoroutineScope()
+
+        ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Snapshot Settings (Direct Save)")
+                Text("Developer Tools", style = MaterialTheme.typography.titleMedium)
+                Text("Force ADB Enable", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Attempt to force ADB ON via internal APIs and Shell Properties. Use this if the system toggle is broken.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Button(
+                    onClick = {
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            forceEnableAdb(ctx)
+                        }
+                    }
+                ) {
+                    Text("Force Enable ADB")
+                }
             }
         }
     }
-}
+
+    private fun forceEnableAdb(ctx: android.content.Context) {
+        val sb = StringBuilder()
+        
+        // Method 1: Settings API (Global)
+        try {
+            val result = android.provider.Settings.Global.putInt(ctx.contentResolver, "adb_enabled", 1)
+            sb.append("Global.ADB: ${if(result) "Success" else "Failed"}\n")
+        } catch (e: Exception) {
+            sb.append("Global.ADB: Error (${e.message})\n")
+        }
+
+        // Method 2: Settings API (Secure)
+        try {
+            val result = android.provider.Settings.Secure.putInt(ctx.contentResolver, "adb_enabled", 1)
+            sb.append("Secure.ADB: ${if(result) "Success" else "Failed"}\n")
+        } catch (e: Exception) {
+            sb.append("Secure.ADB: Error (${e.message})\n")
+        }
+
+        // Method 3: Shell Properties (The heavy hitters)
+        sb.append("Prop sys.usb.config: " + runShell("setprop sys.usb.config adb") + "\n")
+        sb.append("Prop persist.sys.usb.config: " + runShell("setprop persist.sys.usb.config adb") + "\n")
+        sb.append("Prop adb.enable: " + runShell("setprop persist.service.adb.enable 1") + "\n")
+        
+        UiEventBus.emit(UiEvent.Snackbar("Force Attempt Complete:\n$sb"))
+    }
+
+
+    @Composable
+    fun SettingsSnifferCard() {
+        val ctx = LocalContext.current
+        val scope = rememberCoroutineScope()
+        
+        // Launcher not needed for app-specific paths
+        
+        ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Research Tools", style = MaterialTheme.typography.titleMedium)
+                Text("Settings Sniffer", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Dump system settings to App Storage.\nLocation: /sdcard/Android/data/.../files/Download/",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+    
+                Button(
+                    onClick = {
+                        performDumpDirect(ctx, scope)
+                    }
+                ) {
+                    Text("Snapshot Settings (Direct Save)")
+                }
+            }
+        }
+    }
+
 
 
 
