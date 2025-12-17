@@ -19,3 +19,4 @@ build/
 local.properties
 .DS_Store
 .history
+.kotlin/
