@@ -113,17 +113,8 @@ fun SettingsSnifferCard() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // SAF Launcher: User picks where to save the file
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain")
-    ) { uri ->
-        if (uri != null) {
-             performDump(ctx, uri, scope)
-        } else {
-             // User cancelled
-        }
-    }
-
+    // Launcher not needed for app-specific paths
+    
     ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
         Column(
             modifier = Modifier
@@ -134,88 +125,128 @@ fun SettingsSnifferCard() {
             Text("Research Tools", style = MaterialTheme.typography.titleMedium)
             Text("Settings Sniffer", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Dump all system settings. Triggers a 'Save As' dialog to bypass permission issues.",
+                "Dump system settings to App Storage.\nLocation: /sdcard/Android/data/.../files/Download/",
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Button(
                 onClick = {
-                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
-                    val filename = "atoto_settings_dump_$timestamp.txt"
-                    launcher.launch(filename)
+                    performDumpDirect(ctx, scope)
                 }
             ) {
-                Text("Snapshot Settings (Save As...)")
+                Text("Snapshot Settings (Direct Save)")
             }
         }
     }
 }
 
-private fun performDump(ctx: android.content.Context, uri: android.net.Uri, scope: kotlinx.coroutines.CoroutineScope) {
-    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-        try {
-            ctx.contentResolver.openOutputStream(uri)?.use { output ->
-                val writer = output.bufferedWriter()
-                
-                writer.write("=== GLOBAL ===\n")
-                writer.write(runShell("settings list global"))
-                writer.write("\n\n")
 
-                writer.write("=== SYSTEM ===\n")
-                writer.write(runShell("settings list system"))
-                writer.write("\n\n")
 
-                writer.write("=== SECURE ===\n")
-                writer.write(runShell("settings list secure"))
-                writer.write("\n\n")
-                
-                writer.flush()
-            }
-            UiEventBus.emit(UiEvent.Snackbar("Saved successfully!"))
-        } catch (e: Exception) {
-            UiEventBus.emit(UiEvent.Snackbar("Error: ${e.message}"))
-            e.printStackTrace()
-        }
-    }
-}
-
-private fun performDump(scope: kotlinx.coroutines.CoroutineScope) {
+private fun performDumpDirect(ctx: android.content.Context, scope: kotlinx.coroutines.CoroutineScope) {
     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
         val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
         val filename = "atoto_settings_dump_$timestamp.txt"
-        // Try standard SD card path first, fallback if needed
-        val file = java.io.File("/sdcard/Download/$filename")
+        var finalFile: java.io.File? = null
         
-        // Ensure directory exists
-        file.parentFile?.mkdirs()
-
+        // Strategy 1: Try Public Downloads (Standard /sdcard/Download)
+        // Best for user visibility
         try {
-            file.writeText("=== GLOBAL ===\n")
-            val global = runShell("settings list global")
-            file.appendText(global + "\n\n")
-
-            file.writeText("=== SYSTEM ===\n")
-            val system = runShell("settings list system")
-            file.appendText(system + "\n\n")
-
-            file.writeText("=== SECURE ===\n")
-            val secure = runShell("settings list secure")
-            file.appendText(secure + "\n\n")
-
-            UiEventBus.emit(UiEvent.Snackbar("Saved to Downloads/$filename"))
+            val publicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            if (publicDir.exists() || publicDir.mkdirs()) {
+                val candidate= java.io.File(publicDir, filename)
+                writeDataToFile(ctx, candidate)
+                finalFile = candidate
+            }
         } catch (e: Exception) {
-            UiEventBus.emit(UiEvent.Snackbar("Error: ${e.message}"))
+            // Permission denied or other error
             e.printStackTrace()
+        }
+
+        // Strategy 2: Fallback to App-Specific Storage if public failed
+        if (finalFile == null) {
+            try {
+                val privateDir = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                if (privateDir != null) {
+                    val candidate = java.io.File(privateDir, filename)
+                    writeDataToFile(ctx, candidate)
+                    finalFile = candidate
+                }
+            } catch (e: Exception) {
+                UiEventBus.emit(UiEvent.Snackbar("Critical Error: Could not write to ANY storage."))
+                e.printStackTrace()
+                return@launch
+            }
+        }
+
+        if (finalFile != null) {
+             UiEventBus.emit(UiEvent.Snackbar("Saved to: ${finalFile!!.absolutePath}"))
         }
     }
 }
 
-// Simple blocking shell runner for this purpose
+private fun writeDataToFile(ctx: android.content.Context, file: java.io.File) {
+    file.bufferedWriter().use { writer ->
+        writer.write("=== METHOD 1: ANDROID API (ContentResolver) ===\n")
+        writer.write("\n--- SYSTEM ---\n")
+        writer.write(dumpTable(ctx, android.provider.Settings.System.CONTENT_URI))
+        
+        writer.write("\n--- GLOBAL ---\n")
+        writer.write(dumpTable(ctx, android.provider.Settings.Global.CONTENT_URI))
+        
+        writer.write("\n--- SECURE ---\n")
+        writer.write(dumpTable(ctx, android.provider.Settings.Secure.CONTENT_URI))
+
+        writer.write("\n\n===========================================\n")
+        writer.write("=== METHOD 2: SHELL COMMAND (settings list) ===\n")
+        
+        writer.write("\n--- GLOBAL ---\n")
+        writer.write(runShell("settings list global"))
+        writer.write("\n\n")
+
+        writer.write("--- SYSTEM ---\n")
+        writer.write(runShell("settings list system"))
+        writer.write("\n\n")
+
+        writer.write("--- SECURE ---\n")
+        writer.write(runShell("settings list secure"))
+        writer.write("\n\n")
+    }
+}
+
+// Queries the internal Settings database directly.
+// This often bypasses shell restrictions on non-rooted devices.
+private fun dumpTable(ctx: android.content.Context, uri: android.net.Uri): String {
+    val sb = StringBuilder()
+    try {
+        val cursor = ctx.contentResolver.query(uri, null, null, null, "name ASC")
+        cursor?.use {
+            val nameCol = it.getColumnIndex("name")
+            val valCol = it.getColumnIndex("value")
+            while (it.moveToNext()) {
+                val name = if (nameCol >= 0) it.getString(nameCol) else "?"
+                val value = if (valCol >= 0) it.getString(valCol) else "?"
+                sb.append("$name=$value\n")
+            }
+        }
+    } catch (e: Exception) {
+        sb.append("Error querying table: ${e.message}")
+    }
+    return sb.toString()
+}
+
+// Robust shell runner that captures SDTOUT and STDERR
 fun runShell(cmd: String): String {
     return try {
         val proc = Runtime.getRuntime().exec(cmd)
-        proc.inputStream.bufferedReader().use { it.readText() }
+        val stdout = proc.inputStream.bufferedReader().use { it.readText() }
+        val stderr = proc.errorStream.bufferedReader().use { it.readText() }
+        
+        if (stderr.isNotEmpty()) {
+            "STDOUT:\n$stdout\nSTDERR:\n$stderr"
+        } else {
+            stdout
+        }
     } catch (e: Exception) {
-        "Error running '$cmd': ${e.message}"
+        "EXEC_ERROR: ${e.message}"
     }
 }
