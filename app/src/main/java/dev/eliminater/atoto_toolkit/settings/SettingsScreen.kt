@@ -113,14 +113,14 @@ fun SettingsSnifferCard() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // Permission Launcher
+    // SAF Launcher: User picks where to save the file
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-             performDump(scope)
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        if (uri != null) {
+             performDump(ctx, uri, scope)
         } else {
-             scope.launch { UiEventBus.emit(UiEvent.Snackbar("Storage permission required to save dump.")) }
+             // User cancelled
         }
     }
 
@@ -134,23 +134,47 @@ fun SettingsSnifferCard() {
             Text("Research Tools", style = MaterialTheme.typography.titleMedium)
             Text("Settings Sniffer", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Dump all system settings to a file in Downloads. Use this to find hidden toggles by comparing 'Before' and 'After' snapshots.",
+                "Dump all system settings. Triggers a 'Save As' dialog to bypass permission issues.",
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Button(
                 onClick = {
-                    // Check logic
-                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q || 
-                        androidx.core.content.ContextCompat.checkSelfPermission(ctx, Manifest.permission.WRITE_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        performDump(scope)
-                    } else {
-                        launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    }
+                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+                    val filename = "atoto_settings_dump_$timestamp.txt"
+                    launcher.launch(filename)
                 }
             ) {
-                Text("Snapshot Settings (Dump to File)")
+                Text("Snapshot Settings (Save As...)")
             }
+        }
+    }
+}
+
+private fun performDump(ctx: android.content.Context, uri: android.net.Uri, scope: kotlinx.coroutines.CoroutineScope) {
+    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            ctx.contentResolver.openOutputStream(uri)?.use { output ->
+                val writer = output.bufferedWriter()
+                
+                writer.write("=== GLOBAL ===\n")
+                writer.write(runShell("settings list global"))
+                writer.write("\n\n")
+
+                writer.write("=== SYSTEM ===\n")
+                writer.write(runShell("settings list system"))
+                writer.write("\n\n")
+
+                writer.write("=== SECURE ===\n")
+                writer.write(runShell("settings list secure"))
+                writer.write("\n\n")
+                
+                writer.flush()
+            }
+            UiEventBus.emit(UiEvent.Snackbar("Saved successfully!"))
+        } catch (e: Exception) {
+            UiEventBus.emit(UiEvent.Snackbar("Error: ${e.message}"))
+            e.printStackTrace()
         }
     }
 }
