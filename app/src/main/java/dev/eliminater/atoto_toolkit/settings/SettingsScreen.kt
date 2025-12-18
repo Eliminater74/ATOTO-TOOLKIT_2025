@@ -176,22 +176,29 @@ private fun ThemeOptionRow(
         // Method 5: Manufacturer Backdoors (SysFs)
         sb.append("\n=== SysFs Path Finder ===\n")
         
-        // Search for the file, since the hardcoded paths failed
-        val findCmd = "find /sys/devices -name host_dev 2>/dev/null"
-        val foundPaths = runShell(findCmd)
+        // Method 5: Manufacturer Backdoors (SysFs)
+        sb.append("\n=== SysFs Path Finder ===\n")
         
-        if (foundPaths.isNotEmpty() && !foundPaths.contains("Permission denied")) {
-            sb.append("Found candidates:\n$foundPaths\n")
-            // Attempt to write to found paths dynamically
-            foundPaths.trim().split("\n").forEach { path ->
-                if (path.isNotEmpty()) {
-                    sb.append("Writing to $path: " + writeSysFs(path, "device") + "\n")
-                }
+        // Search for the file (Fixed: removed redirection that breaks Runtime.exec)
+        val findCmd = "find /sys/devices -name host_dev"
+        val rawOutput = runShell(findCmd)
+        
+        // Parse output: Only accept lines that look like valid absolute paths
+        val foundPaths = rawOutput.split("\n")
+            .map { it.trim() }
+            .filter { it.startsWith("/sys/") && !it.contains("Permission denied") }
+        
+        if (foundPaths.isNotEmpty()) {
+            sb.append("Found candidates:\n${foundPaths.joinToString("\n")}\n")
+            
+            foundPaths.forEach { path ->
+                val result = writeSysFs(path, "device")
+                sb.append("Writing to $path: $result\n")
             }
         } else {
-             sb.append("Search failed or no paths found.\n")
+             sb.append("Search failed. Raw Output:\n$rawOutput\n")
              // Keep the hardcoded ones just in case 'find' failed but paths exist (blind shot)
-             sb.append("Path A: " + writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/e2500000.usb2/host_dev", "device") + "\n")
+             sb.append("Fallback Path A: " + writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/e2500000.usb2/host_dev", "device") + "\n")
         }
 
 
