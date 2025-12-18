@@ -172,8 +172,52 @@ private fun ThemeOptionRow(
         // Method 4: Wireless ADB (The PC-Free Grail)
         sb.append("Prop tcp.port: " + runShell("setprop service.adb.tcp.port 5555") + "\n")
         sb.append("Prop tcp.port (persist): " + runShell("setprop persist.adb.tcp.port 5555") + "\n")
+
+        // Method 5: Manufacturer Backdoors (SysFs)
+        sb.append("\n=== SysFs Path Finder ===\n")
         
+        // Search for the file, since the hardcoded paths failed
+        val findCmd = "find /sys/devices -name host_dev 2>/dev/null"
+        val foundPaths = runShell(findCmd)
+        
+        if (foundPaths.isNotEmpty() && !foundPaths.contains("Permission denied")) {
+            sb.append("Found candidates:\n$foundPaths\n")
+            // Attempt to write to found paths dynamically
+            foundPaths.trim().split("\n").forEach { path ->
+                if (path.isNotEmpty()) {
+                    sb.append("Writing to $path: " + writeSysFs(path, "device") + "\n")
+                }
+            }
+        } else {
+             sb.append("Search failed or no paths found.\n")
+             // Keep the hardcoded ones just in case 'find' failed but paths exist (blind shot)
+             sb.append("Path A: " + writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/e2500000.usb2/host_dev", "device") + "\n")
+        }
+
+
+        // Method 6: Proprietary Wireless Trigger (Found in init.syu.rc)
+        sb.append("Prop sys.wl.enable: " + runShell("setprop sys.wl.enable 1") + "\n")
+
         UiEventBus.emit(UiEvent.Snackbar("Force Attempt Complete:\n$sb"))
+    }
+    
+    // Direct file write using Java IO (Bypasses shell restrictions if file is 0666)
+    private fun writeSysFs(path: String, value: String): String {
+        return try {
+            val file = java.io.File(path)
+            if (file.exists() && file.canWrite()) {
+                file.writeText(value)
+                "Success (Java IO)"
+            } else {
+                // Fallback to shell if Java fails (e.g., restricted parent dir)
+                // MUST usage sh -c to allow redirection (>) to work
+                val p = Runtime.getRuntime().exec(arrayOf("sh", "-c", "echo '$value' > $path"))
+                val stderr = p.errorStream.bufferedReader().use { it.readText() }
+                if (stderr.isEmpty()) "Executed (Shell)" else "Shell Error: $stderr"
+            }
+        } catch (e: Exception) {
+            "Error: ${e.message}"
+        }
     }
 
 
