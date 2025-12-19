@@ -152,6 +152,7 @@ private fun CategorySection(cat: RecCategory, onOpen: (String) -> Unit) {
                             Text(app.details, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
                         }
                         IconButton(onClick = { onOpen(app.url) }) {
+                            @Suppress("DEPRECATION")
                             Icon(Icons.Outlined.OpenInNew, "View in Store")
                         }
                     }

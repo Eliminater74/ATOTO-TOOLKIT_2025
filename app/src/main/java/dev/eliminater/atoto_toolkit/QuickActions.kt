@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -82,7 +82,8 @@ fun QuickActions() {
                 }
             }
 
-            Divider()
+
+            HorizontalDivider()
             Text("Output", style = MaterialTheme.typography.titleMedium)
             Text(if (output.isBlank()) "—" else output)
         }

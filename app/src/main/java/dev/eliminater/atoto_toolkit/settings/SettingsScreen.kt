@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.eliminater.atoto_toolkit.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.material3.ButtonDefaults
 import dev.eliminater.atoto_toolkit.ui.UiEventBus
 import dev.eliminater.atoto_toolkit.ui.UiEvent
 
@@ -132,17 +134,76 @@ private fun ThemeOptionRow(
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                Button(
-                    onClick = {
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            forceEnableAdb(ctx)
-                        }
-                    }
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Force Enable ADB")
+                    Button(
+                        onClick = {
+                            scope.launch(Dispatchers.IO) {
+                                forceEnableAdb(ctx)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Force Enable ADB")
+                    }
+
+                    Button(
+                        onClick = {
+                            scope.launch(Dispatchers.IO) {
+                                forceRestoreUsbMode(ctx)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Restore USB Mode")
+                    }
                 }
             }
         }
+    }
+
+    private suspend fun forceRestoreUsbMode(ctx: android.content.Context) {
+        val sb = StringBuilder()
+        
+        sb.append("\n=== USB Restore (Switching back to Host) ===\n")
+        
+        // 1. Find the path again
+        val findCmd = "find /sys/devices -name host_dev"
+        val rawOutput = runShell(findCmd)
+        
+        val foundPaths = rawOutput.split("\n")
+            .map { it.trim() }
+            .filter { it.startsWith("/sys/") && !it.contains("Permission denied") }
+        
+        if (foundPaths.isNotEmpty()) {
+            sb.append("Found paths:\n${foundPaths.joinToString("\n")}\n")
+            foundPaths.forEach { path ->
+                // Write "host" to switch back to host mode (reading USB sticks)
+                val result = writeSysFs(path, "host")
+                sb.append("Writing 'host' to $path: $result\n")
+            }
+        } else {
+             sb.append("Search failed. Trying fallback.\n")
+             sb.append("Fallback: " + writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/e2500000.usb2/host_dev", "host") + "\n")
+        }
+
+        // 2. Also try disabling the manufacturer override
+        // As seen in fytadboff.sh: echo '1' > /sys/bus/platform/drivers/usb20_otg/force_usb_mode
+        sb.append("Force OTG '1': " + writeSysFs("/sys/bus/platform/drivers/usb20_otg/force_usb_mode", "1") + "\n")
+        
+        // 3. Stop ADBD? (Optional, maybe user wants wireless to stay involved separately)
+        // Let's leave ADBD running but just switch hardware, so wireless might survive.
+        
+        UiEventBus.emit(UiEvent.Snackbar("Restore Complete:\n$sb"))
     }
 
     private suspend fun forceEnableAdb(ctx: android.content.Context) {

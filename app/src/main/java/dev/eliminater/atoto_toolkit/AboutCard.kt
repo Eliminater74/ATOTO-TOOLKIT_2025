@@ -75,7 +75,7 @@ fun AboutCard() {
             }
         }
 
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         Text(
             "Disclaimer",

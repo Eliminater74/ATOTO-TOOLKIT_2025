@@ -130,7 +130,7 @@ fun DebloaterCard() {
             )
         }
 
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         // List
         val shown = filtered(all, query)
@@ -330,7 +330,7 @@ internal fun AppItemRow(
             }
             
             if (item.description.isNotBlank()) {
-                Divider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.2f))
+                HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.2f))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(

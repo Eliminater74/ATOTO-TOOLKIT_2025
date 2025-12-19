@@ -147,7 +147,7 @@ fun WirelessAdbCard() {
             }
         }
 
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         
         // Instructions
         Card(

@@ -193,7 +193,7 @@ fun LaunchersCard() {
                 }
 
                 if (log.isNotBlank()) {
-                    Divider()
+                    HorizontalDivider()
                     Text("Log", style = MaterialTheme.typography.labelMedium)
                     Text(log, style = MaterialTheme.typography.bodySmall)
                 }

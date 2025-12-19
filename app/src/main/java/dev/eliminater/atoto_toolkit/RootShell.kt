@@ -42,10 +42,22 @@ object RootShell {
         }
     }
 
-    /** Prefer Root -> Shizuku -> Shell. */
+    /**
+     * Smart Execution Strategy:
+     * 1. Root (Highest Privilege)
+     * 2. Local ADB (Privileged User)
+     * 3. Shizuku (Privileged User - Backup)
+     * 4. Shell (Restricted App Sandbox)
+     */
     suspend fun runSmart(cmd: String): Pair<Int, String> {
         return when {
             isRootAvailable() -> runRoot(cmd)
+            LocalAdb.isConnected() -> {
+                // Return 0 for success? LocalAdb.execute implementation needs to support exit codes properly
+                // For now, wrapper returns output. We assume success if output !startsWith "Error"
+                val out = LocalAdb.execute(cmd)
+                if (out.startsWith("Error executing")) -1 to out else 0 to out
+            }
             isShizukuAvailable() -> runShizuku(cmd) 
             else -> runShell(cmd)
         }

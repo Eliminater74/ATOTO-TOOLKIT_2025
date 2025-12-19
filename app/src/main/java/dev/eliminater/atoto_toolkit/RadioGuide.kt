@@ -198,6 +198,7 @@ private fun RadioAppItem(info: RadioAppInfo, onStore: () -> Unit) {
                 )
                 
                 TextButton(onClick = onStore) {
+                    @Suppress("DEPRECATION")
                     Icon(Icons.Outlined.OpenInNew, null, modifier=Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Play Store")

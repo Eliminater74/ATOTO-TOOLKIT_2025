@@ -47,7 +47,12 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        resources.excludes += "/META-INF/LICENSE.md"
+        resources.excludes += "/META-INF/LICENSE.txt"
+        resources.excludes += "/META-INF/LICENSE-notice.md"
+    }
 }
 
 dependencies {
@@ -83,4 +88,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // --------------- Local ADB Client (Loopback) ---------------
+    implementation("dev.mobile:dadb:1.2.6")
 }
