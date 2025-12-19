@@ -38,6 +38,14 @@ object PackageDB {
         "com.syu.gesture" to PackageInfo("Touch screen gestures. Disable if you don't use screen gestures.", SafetyLevel.SAFE),
         "com.syu.calibration" to PackageInfo("Touch/Screen Calibration tool. Keep just in case, or restore if needed.", SafetyLevel.CAUTION),
 
+        // --- ATOTO / OEM Specific (MIXED) ---
+        "com.atoto.speechtotext" to PackageInfo("ATOTO Voice Control. Safe to remove if you use Google Assistant.", SafetyLevel.SAFE),
+        "com.atoto.carsysteminfo" to PackageInfo("System Info Card. Shows storage/ram. Safe to remove.", SafetyLevel.SAFE),
+        "com.aidl.atoto.store" to PackageInfo("ATOTO App Store. Often outdated. Safe to remove.", SafetyLevel.SAFE),
+        "com.atoto.uvc2camera" to PackageInfo("External USB Camera Handler. Safe if you don't use a dashcam.", SafetyLevel.SAFE),
+        "com.hugoteam.airtalk_wireless" to PackageInfo("Wireless CarPlay/Android Auto Service. Removing THIS breaks wireless phone projection.", SafetyLevel.UNSAFE),
+        "com.synmoon.carkit" to PackageInfo("Bluetooth Phone Link service. Required for some hands-free features.", SafetyLevel.CAUTION),
+        
         // --- Apps / Bloat (SAFE) ---
         "com.syu.carlink" to PackageInfo("PhoneLink / CarPlay / Android Auto bridge. Remove ONLY if you don't use CarPlay/AA.", SafetyLevel.CAUTION),
         "net.easyconn" to PackageInfo("EasyConnection screen mirroring app. Obsolete/Junk if using CarPlay/AA.", SafetyLevel.SAFE),
@@ -46,10 +54,11 @@ object PackageDB {
         "com.syu.gallery" to PackageInfo("Stock Gallery app. Safe to remove.", SafetyLevel.SAFE),
         "com.syu.filemanager" to PackageInfo("Stock File Manager. Safe to remove if you use a 3rd party one.", SafetyLevel.SAFE),
         "com.syu.carradio" to PackageInfo("Stock FM/AM Radio. Safe to remove if you don't listen to radio or use NavRadio+.", SafetyLevel.SAFE),
+        "com.syu.radio" to PackageInfo("Alternative Stock Radio package. Safe to remove.", SafetyLevel.SAFE),
         "com.syu.eq" to PackageInfo("Stock Equalizer/DSP. Remove only if you don't use built-in audio processing.", SafetyLevel.CAUTION),
         "com.syu.av" to PackageInfo("AV-IN (RCA Input) Viewer. Safe to remove if unused.", SafetyLevel.SAFE),
-        "com.syu.onekeynavi" to PackageInfo("Navigation shortcut helper. Safe to remove.", SafetyLevel.SAFE),
-        "com.syu.carui" to PackageInfo("Stock Launcher. Safe to disable ONLY if you have another launcher (Agama/Nova) set as default.", SafetyLevel.CAUTION),
+        "com.ex.dabplayer.pad" to PackageInfo("DAB+ Radio Player. Safe to remove if no DAB dongle.", SafetyLevel.SAFE),
+        "com.hualai" to PackageInfo("Generic Chinese bloatware / Camera test tool. Safe to remove.", SafetyLevel.SAFE),
         
         // --- Third Party / Generic Bloat (SAFE) ---
         "com.google.android.apps.maps" to PackageInfo("Google Maps. Safe to remove if you use Waze/etc.", SafetyLevel.SAFE),
@@ -57,6 +66,9 @@ object PackageDB {
         "com.android.chrome" to PackageInfo("Google Chrome.", SafetyLevel.SAFE),
         "com.google.android.googlequicksearchbox" to PackageInfo("Google App / Assistant. Heavy resource usage.", SafetyLevel.SAFE),
         "com.google.android.tts" to PackageInfo("Text-to-Speech. Needed for Voice navigation prompts.", SafetyLevel.CAUTION),
+        "com.netflix.mediaclient" to PackageInfo("Netflix. Safe to remove.", SafetyLevel.SAFE),
+        "com.facebook.katana" to PackageInfo("Facebook. Safe to remove.", SafetyLevel.SAFE),
+        "com.spotify.music" to PackageInfo("Spotify. Safe to remove.", SafetyLevel.SAFE),
         
         // --- Android System (UNSAFE) ---
         "android" to PackageInfo("Android System Framework. DO NOT TOUCH.", SafetyLevel.UNSAFE),
@@ -65,6 +77,12 @@ object PackageDB {
         "com.android.vending" to PackageInfo("Google Play Store. Keep for app updates.", SafetyLevel.CAUTION),
         "com.google.android.gms" to PackageInfo("Google Play Services. Many apps depend on this.", SafetyLevel.UNSAFE),
         "com.google.android.gsf" to PackageInfo("Google Services Framework.", SafetyLevel.UNSAFE),
-        "com.android.inputmethod.latin" to PackageInfo("AOSP Keyboard. Keep unless you have another keyboard installed.", SafetyLevel.CAUTION)
+        "com.android.inputmethod.latin" to PackageInfo("AOSP Keyboard. Keep unless you have another keyboard installed.", SafetyLevel.CAUTION),
+        
+        // --- Spreadtrum / Unisoc Vendor (UNSAFE) ---
+        "com.sprd.systemupdate" to PackageInfo("Spreadtrum System Update. Critical firmware OTA handler.", SafetyLevel.UNSAFE),
+        "com.sprd.logmanager" to PackageInfo("Spreadtrum Logger. Safe to ignore, risky to remove.", SafetyLevel.CAUTION),
+        "com.spreadtrum.sgps" to PackageInfo("Spreadtrum GPS Assist. Improving lock time.", SafetyLevel.UNSAFE),
+        "com.spreadtrum.ims" to PackageInfo("VoLTE/IMS Service. Likely unused on WiFi tablets but part of modem stack.", SafetyLevel.UNSAFE)
     )
 }
