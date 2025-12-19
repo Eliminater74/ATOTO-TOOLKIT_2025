@@ -231,8 +231,29 @@ private fun ThemeOptionRow(
 
     private suspend fun forceEnableAdb(ctx: android.content.Context) {
         val sb = StringBuilder()
+
+        sb.append("=== PHASE 1: Hardware Enable (SysFs) ===\n")
+        // MOVE: Hardware must be ON before we try to bind the USB gadget in Phase 3
+        val findCmd = "find /sys/devices -name host_dev"
+        val rawOutput = runShell(findCmd)
         
-        sb.append("=== PHASE 1: Native Manufacturer Scripts ===\n")
+        val foundPaths = rawOutput.split("\n")
+            .map { it.trim() }
+            .filter { it.startsWith("/sys/") && !it.contains("Permission denied") }
+        
+        if (foundPaths.isNotEmpty()) {
+            sb.append("Writing 'device' to ${foundPaths.size} paths...\n")
+            foundPaths.forEach { path ->
+                val res = writeSysFs(path, "device")
+                sb.append("$path -> $res\n")
+            }
+        } else {
+             sb.append("SysFs search failed. Access might be restricted.\n")
+             // Blind shot
+             writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/20200000.usb/host_dev", "device")
+        }
+
+        sb.append("\n=== PHASE 2: Native Manufacturer Scripts ===\n")
         // Try to find and run the dedicated script first
         val fytScript = listOf("/system/bin/fytadbon.sh", "/vendor/bin/fytadbon.sh", "/sbin/fytadbon.sh")
             .find { java.io.File(it).exists() }
@@ -244,7 +265,7 @@ private fun ThemeOptionRow(
             sb.append("Native fytadbon.sh not found.\n")
         }
 
-        sb.append("\n=== PHASE 2: Settings Toggle (Wakeup Call) ===\n")
+        sb.append("\n=== PHASE 3: Settings Toggle (Wakeup Call) ===\n")
         // Toggle OFF then ON to trigger system observers
         try {
             android.provider.Settings.Global.putInt(ctx.contentResolver, "adb_enabled", 0)
@@ -260,7 +281,7 @@ private fun ThemeOptionRow(
         } catch (e: Exception) { /* Ignore secure failure */ }
 
 
-        sb.append("\n=== PHASE 3: USB Stack Reset (The Kickstart) ===\n")
+        sb.append("\n=== PHASE 4: USB Stack Reset (The Kickstart) ===\n")
         
         // Debug current state
         val preState = runShell("getprop sys.usb.state")
@@ -284,25 +305,6 @@ private fun ThemeOptionRow(
         kotlinx.coroutines.delay(1000)
         val postState = runShell("getprop sys.usb.state")
         sb.append("Post-State: $postState\n")
-
-        sb.append("\n=== PHASE 4: SysFs Backdoor ===\n")
-        val findCmd = "find /sys/devices -name host_dev"
-        val rawOutput = runShell(findCmd)
-        // ... (rest of path finding logic)
-        val foundPaths = rawOutput.split("\n")
-            .map { it.trim() }
-            .filter { it.startsWith("/sys/") && !it.contains("Permission denied") }
-        
-        if (foundPaths.isNotEmpty()) {
-            sb.append("Writing 'device' to ${foundPaths.size} paths...\n")
-            foundPaths.forEach { path ->
-                writeSysFs(path, "device")
-            }
-        } else {
-             sb.append("SysFs search failed. Access might be restricted.\n")
-             // Blind shot
-             writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/20200000.usb/host_dev", "device")
-        }
         
         // Method 6: Proprietary Wireless Trigger
         sb.append("Prop sys.wl.enable: " + runShell("setprop sys.wl.enable 1") + "\n")
