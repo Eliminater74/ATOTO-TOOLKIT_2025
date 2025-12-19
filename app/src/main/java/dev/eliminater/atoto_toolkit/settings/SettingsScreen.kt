@@ -91,6 +91,8 @@ fun SettingsScreen() {
         ForceAdbCard()
         SelfRepairCard()
         Spacer(Modifier.height(16.dp))
+        ShortcutsCard()
+        Spacer(Modifier.height(16.dp))
         SettingsSnifferCard()
         
         // Add extra padding at bottom for scrolling
@@ -374,6 +376,58 @@ private fun ThemeOptionRow(
         }
     }
 
+
+    @Composable
+    fun ShortcutsCard() {
+        val ctx = LocalContext.current
+        val scope = rememberCoroutineScope()
+        
+        ElevatedCard(Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("System Shortcuts", style = MaterialTheme.typography.titleMedium)
+                
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                             try {
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                ctx.startActivity(intent)
+                             } catch (e: Exception) {
+                                scope.launch { UiEventBus.emit(UiEvent.Snackbar("Could not open Dev Options")) }
+                             }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Dev Options")
+                    }
+                    
+                    Button(
+                        onClick = {
+                             try {
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                ctx.startActivity(intent)
+                             } catch (e: Exception) {
+                                scope.launch { UiEventBus.emit(UiEvent.Snackbar("Could not open Settings")) }
+                             }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Android Settings")
+                    }
+                }
+            }
+        }
+    }
 
     @Composable
     fun SettingsSnifferCard() {

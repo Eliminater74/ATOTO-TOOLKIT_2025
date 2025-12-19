@@ -31,6 +31,7 @@ fun StatusCard() {
     var androidVer by remember { mutableStateOf("") }
     var buildId by remember { mutableStateOf("") }
     var rootStatus by remember { mutableStateOf<Boolean?>(null) }
+    var hasLocalAdb by remember { mutableStateOf<Boolean?>(null) }
     var platform by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -41,6 +42,7 @@ fun StatusCard() {
             platform = Build.BOARD
             
             rootStatus = RootShell.isRootAvailable()
+            hasLocalAdb = dev.eliminater.atoto_toolkit.LocalAdb.isConnected()
         }
     }
 
@@ -84,7 +86,7 @@ fun StatusCard() {
             )
             StatusChip(
                 label = "Local ADB",
-                available = dev.eliminater.atoto_toolkit.LocalAdb.isConnected(),
+                available = hasLocalAdb,
                 modifier = Modifier.weight(1f)
             )
         }

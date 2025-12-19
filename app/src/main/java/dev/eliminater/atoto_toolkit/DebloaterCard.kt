@@ -76,11 +76,11 @@ fun DebloaterCard() {
         // ... (List omitted) ...
         
         // Action Buttons
+        val hasPrivilege = hasRoot || hasLocalAdb
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val hasPrivilege = hasRoot || hasLocalAdb
             val canAct = !busy && selected.isNotEmpty()
             
             dev.eliminater.atoto_toolkit.ui.components.GradientButton(
