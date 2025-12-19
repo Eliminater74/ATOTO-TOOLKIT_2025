@@ -168,6 +168,23 @@ private fun ThemeOptionRow(
                         Text("Restore USB Mode")
                     }
                 }
+
+                // Debug / Manual Connection
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val result = LocalAdb.connect()
+                            if (result) {
+                                UiEventBus.emit(UiEvent.Snackbar("Connected to Localhost:5555"))
+                            } else {
+                                UiEventBus.emit(UiEvent.Snackbar("Failed to connect. Is ADB listening?"))
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Test Local Connection (127.0.0.1:5555)")
+                }
             }
         }
     }
