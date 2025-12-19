@@ -86,6 +86,30 @@ object LocalAdb {
         }
     }
     
+    
+    /**
+     * Grants a runtime permission to this app via ADB loopback.
+     */
+    suspend fun grantSelfPermission(ctx: android.content.Context, permission: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!isConnected()) {
+                    if (!connect()) return@withContext false
+                }
+                
+                val pkgName = ctx.packageName
+                val cmd = "pm grant $pkgName $permission"
+                val res = execute(cmd)
+                
+                // Success usually returns empty string or "Success" depending on API level
+                // Failure usually prints "Security exception" etc.
+                !res.contains("exception", ignoreCase = true) && !res.contains("error", ignoreCase = true)
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
     fun disconnect() {
         try {
             dadbRef.get()?.close()

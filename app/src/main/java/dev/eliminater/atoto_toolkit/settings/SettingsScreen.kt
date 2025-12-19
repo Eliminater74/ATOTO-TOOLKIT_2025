@@ -84,6 +84,7 @@ fun SettingsScreen() {
         }
 
         ForceAdbCard()
+        SelfRepairCard()
         Spacer(Modifier.height(16.dp))
         SettingsSnifferCard()
         
@@ -285,6 +286,49 @@ private fun ThemeOptionRow(
         sb.append("Prop sys.wl.enable: " + runShell("setprop sys.wl.enable 1") + "\n")
 
         UiEventBus.emit(UiEvent.Snackbar("Force Sequence Done. Check PC!\n$sb"))
+    }
+    
+    @Composable
+    fun SelfRepairCard() {
+        val ctx = LocalContext.current
+        val scope = rememberCoroutineScope()
+        var status by remember { mutableStateOf("Unknown") }
+        var isConnected by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            isConnected = LocalAdb.isConnected()
+            if (!isConnected) {
+                // Try to connect silently if port 5555 is open
+                isConnected = LocalAdb.connect()
+            }
+            status = if (isConnected) "Connected (Loopback Active)" else "Not Connected"
+        }
+
+        if (isConnected) {
+            ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Self-Repair", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        "Local ADB is active! You can now grant this app the 'WRITE_SECURE_SETTINGS' permission permanently. This fixes 'Phase 2' errors.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    Button(onClick = {
+                        scope.launch {
+                            val success = LocalAdb.grantSelfPermission(ctx, android.Manifest.permission.WRITE_SECURE_SETTINGS)
+                            if (success) {
+                                UiEventBus.emit(UiEvent.Snackbar("Success! Permission Granted.\nPhase 2 toggles will now work."))
+                            } else {
+                                UiEventBus.emit(UiEvent.Snackbar("Failed to grant permission."))
+                            }
+                        }
+                    }) {
+                        Text("Grant Permissions to Self")
+                    }
+                }
+            }
+        }
     }
     
     // Direct file write using Java IO (Bypasses shell restrictions if file is 0666)
