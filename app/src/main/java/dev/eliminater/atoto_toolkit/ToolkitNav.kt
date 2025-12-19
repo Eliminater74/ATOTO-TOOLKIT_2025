@@ -55,7 +55,6 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
     data object Status    : Dest("status",    "Status",    Icons.Outlined.Info)
     data object Quick     : Dest("quick",     "Quick",     Icons.Outlined.Bolt)
     data object Launchers : Dest("launchers", "Launchers", Icons.Outlined.Home)
-    data object Shizuku   : Dest("shizuku",   "Shizuku",   Icons.Outlined.Power)
     data object Debloat   : Dest("debloat",   "Debloat",   Icons.Outlined.Delete)
     data object Backup    : Dest("backup",    "Backup",    Icons.Outlined.Save)
     data object Wireless  : Dest("wireless",  "ADB Wi-Fi", Icons.Outlined.Wifi)
@@ -68,7 +67,7 @@ sealed class Dest(val route: String, val label: String, val icon: ImageVector) {
 }
 
 private val destinations = listOf(
-    Dest.Status, Dest.Quick, Dest.Launchers, Dest.Radio, Dest.Recs, Dest.Debloat, Dest.Backup, Dest.Shizuku, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
+    Dest.Status, Dest.Quick, Dest.Launchers, Dest.Radio, Dest.Recs, Dest.Debloat, Dest.Backup, Dest.Wireless, Dest.Help, Dest.About, Dest.Settings
 )
 
 enum class DeviceWarning { NOT_ATOTO, NOT_S8 }
@@ -170,7 +169,6 @@ fun ToolkitApp() {
                 composable(Dest.Status.route)    { StatusCard() }
                 composable(Dest.Quick.route)     { QuickActions() }
                 composable(Dest.Launchers.route) { LaunchersCard() }
-                composable(Dest.Shizuku.route)   { ShizukuCard() }
                 composable(Dest.Debloat.route)   { DebloaterCard() }
                 composable(Dest.Backup.route)    { BackupCard() }
                 composable(Dest.Wireless.route)  { WirelessAdbCard() }

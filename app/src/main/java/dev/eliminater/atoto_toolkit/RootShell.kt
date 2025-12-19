@@ -4,7 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import rikka.shizuku.Shizuku
+import java.io.InputStreamReader
 
 /**
  * Root + non-root shell helper.
@@ -30,24 +30,11 @@ object RootShell {
     suspend fun runShell(cmd: String): Pair<Int, String> =
         exec(arrayOf("sh", "-c", cmd))
 
-    /** Check if Shizuku is available and we have permission. */
-    fun isShizukuAvailable(): Boolean {
-        return try {
-            // Check if service is bound
-            Shizuku.pingBinder()
-        } catch (e: NoClassDefFoundError) {
-            false
-        } catch (e: Exception) {
-            false
-        }
-    }
-
     /**
      * Smart Execution Strategy:
      * 1. Root (Highest Privilege)
      * 2. Local ADB (Privileged User)
-     * 3. Shizuku (Privileged User - Backup)
-     * 4. Shell (Restricted App Sandbox)
+     * 3. Shell (Restricted App Sandbox)
      */
     suspend fun runSmart(cmd: String): Pair<Int, String> {
         return when {
@@ -58,24 +45,7 @@ object RootShell {
                 val out = LocalAdb.execute(cmd)
                 if (out.startsWith("Error executing")) -1 to out else 0 to out
             }
-            isShizukuAvailable() -> runShizuku(cmd) 
             else -> runShell(cmd)
-        }
-    }
-
-    suspend fun runShizuku(cmd: String): Pair<Int, String> = withContext(Dispatchers.IO) {
-        try {
-            // Use reflection to bypass potential visibility issues with the API
-            val m = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
-            m.isAccessible = true
-            val p = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
-            val sb = StringBuilder()
-            BufferedReader(InputStreamReader(p.inputStream)).use { it.lineSequence().forEach(sb::appendLine) }
-            BufferedReader(InputStreamReader(p.errorStream)).use { it.lineSequence().forEach(sb::appendLine) }
-            val code = p.waitFor()
-            code to sb.toString().trim()
-        } catch (e: Exception) {
-            -1 to ("SHIZUKU ERROR: " + e.message)
         }
     }
 

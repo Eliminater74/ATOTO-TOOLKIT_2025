@@ -81,10 +81,6 @@ dependencies {
     // --------------- DataStore (Preferences) ---------------
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // --------------- Shizuku (Non-Root Shell) ---------------
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

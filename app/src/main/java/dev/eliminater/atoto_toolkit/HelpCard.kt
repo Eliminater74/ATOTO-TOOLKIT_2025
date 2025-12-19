@@ -42,7 +42,7 @@ fun HelpCard(onOpenRootGuide: () -> Unit) {
 
         HelpSection(
             title = "Non-Root Users",
-            content = "You can use this app with Shizuku or Wireless ADB. First, install Shizuku and start it via Wireless Debugging. This grants the app 'special' powers to disable bloatware safely."
+            content = "You can use the 'Force ADB' feature in Settings to enable privileged actions via a local connection. This grants the app powers to disable bloatware safely without Root."
         )
 
         HelpSection(

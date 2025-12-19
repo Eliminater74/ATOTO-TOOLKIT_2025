@@ -31,7 +31,6 @@ fun StatusCard() {
     var androidVer by remember { mutableStateOf("") }
     var buildId by remember { mutableStateOf("") }
     var rootStatus by remember { mutableStateOf<Boolean?>(null) }
-    var shizukuStatus by remember { mutableStateOf<Boolean?>(null) }
     var platform by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -42,7 +41,6 @@ fun StatusCard() {
             platform = Build.BOARD
             
             rootStatus = RootShell.isRootAvailable()
-            shizukuStatus = RootShell.isShizukuAvailable()
         }
     }
 
@@ -77,7 +75,7 @@ fun StatusCard() {
             }
         }
 
-        // Capabilities (Root/Shizuku)
+        // Capabilities (Root)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatusChip(
                 label = "Root",
@@ -85,8 +83,8 @@ fun StatusCard() {
                 modifier = Modifier.weight(1f)
             )
             StatusChip(
-                label = "Shizuku",
-                available = shizukuStatus,
+                label = "Local ADB",
+                available = dev.eliminater.atoto_toolkit.LocalAdb.isConnected(),
                 modifier = Modifier.weight(1f)
             )
         }
