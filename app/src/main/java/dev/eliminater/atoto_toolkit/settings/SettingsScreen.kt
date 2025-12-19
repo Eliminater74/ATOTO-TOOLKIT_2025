@@ -209,64 +209,82 @@ private fun ThemeOptionRow(
     private suspend fun forceEnableAdb(ctx: android.content.Context) {
         val sb = StringBuilder()
         
-        // Method 1: Settings API (Global)
+        sb.append("=== PHASE 1: Native Manufacturer Scripts ===\n")
+        // Try to find and run the dedicated script first
+        val fytScript = listOf("/system/bin/fytadbon.sh", "/vendor/bin/fytadbon.sh", "/sbin/fytadbon.sh")
+            .find { java.io.File(it).exists() }
+        
+        if (fytScript != null) {
+            sb.append("Found script: $fytScript\n")
+            sb.append("Exec: " + runShell("sh $fytScript") + "\n")
+        } else {
+            sb.append("Native fytadbon.sh not found.\n")
+        }
+
+        sb.append("\n=== PHASE 2: Settings Toggle (Wakeup Call) ===\n")
+        // Toggle OFF then ON to trigger system observers
         try {
+            android.provider.Settings.Global.putInt(ctx.contentResolver, "adb_enabled", 0)
+            kotlinx.coroutines.delay(500)
             val result = android.provider.Settings.Global.putInt(ctx.contentResolver, "adb_enabled", 1)
-            sb.append("Global.ADB: ${if(result) "Success" else "Failed"}\n")
+            sb.append("Global.ADB Toggle: ${if(result) "Success" else "Failed"}\n")
         } catch (e: Exception) {
             sb.append("Global.ADB: Error (${e.message})\n")
         }
 
-        // Method 2: Settings API (Secure)
         try {
-            val result = android.provider.Settings.Secure.putInt(ctx.contentResolver, "adb_enabled", 1)
-            sb.append("Secure.ADB: ${if(result) "Success" else "Failed"}\n")
-        } catch (e: Exception) {
-            sb.append("Secure.ADB: Error (${e.message})\n")
-        }
+            android.provider.Settings.Secure.putInt(ctx.contentResolver, "adb_enabled", 1)
+        } catch (e: Exception) { /* Ignore secure failure */ }
 
-        // Method 3: Shell Properties (The heavy hitters)
-        sb.append("Prop sys.usb.config: " + runShell("setprop sys.usb.config adb") + "\n")
-        sb.append("Prop persist.sys.usb.config: " + runShell("setprop persist.sys.usb.config adb") + "\n")
-        sb.append("Prop adb.enable: " + runShell("setprop persist.service.adb.enable 1") + "\n")
-        
-        // Method 4: Wireless ADB (The PC-Free Grail)
-        sb.append("Prop tcp.port: " + runShell("setprop service.adb.tcp.port 5555") + "\n")
-        sb.append("Prop tcp.port (persist): " + runShell("setprop persist.adb.tcp.port 5555") + "\n")
 
-        // Method 5: Manufacturer Backdoors (SysFs)
-        sb.append("\n=== SysFs Path Finder ===\n")
+        sb.append("\n=== PHASE 3: USB Stack Reset (The Kickstart) ===\n")
         
-        // Method 5: Manufacturer Backdoors (SysFs)
-        sb.append("\n=== SysFs Path Finder ===\n")
+        // Debug current state
+        val preState = runShell("getprop sys.usb.state")
+        sb.append("Pre-State: $preState\n")
+
+        // 1. Kill the stack
+        runShell("setprop sys.usb.config none")
+        kotlinx.coroutines.delay(1000)
         
-        // Search for the file (Fixed: removed redirection that breaks Runtime.exec)
+        // 2. Restart with EXCLUSIVE ADB
+        // 'mtp,adb' seems to fail to trigger the daemon on some units.
+        // We force 'adb' only. User can use "Restore USB" to get MTP back.
+        val res1 = runShell("setprop sys.usb.config adb")
+        sb.append("Set 'adb': $res1\n")
+        
+        // 3. Backup Props
+        runShell("setprop persist.sys.usb.config adb")
+        runShell("setprop persist.service.adb.enable 1")
+        runShell("setprop service.adb.tcp.port 5555")
+
+        kotlinx.coroutines.delay(1000)
+        val postState = runShell("getprop sys.usb.state")
+        sb.append("Post-State: $postState\n")
+
+        sb.append("\n=== PHASE 4: SysFs Backdoor ===\n")
         val findCmd = "find /sys/devices -name host_dev"
         val rawOutput = runShell(findCmd)
-        
-        // Parse output: Only accept lines that look like valid absolute paths
+        // ... (rest of path finding logic)
         val foundPaths = rawOutput.split("\n")
             .map { it.trim() }
             .filter { it.startsWith("/sys/") && !it.contains("Permission denied") }
         
         if (foundPaths.isNotEmpty()) {
-            sb.append("Found candidates:\n${foundPaths.joinToString("\n")}\n")
-            
+            sb.append("Writing 'device' to ${foundPaths.size} paths...\n")
             foundPaths.forEach { path ->
-                val result = writeSysFs(path, "device")
-                sb.append("Writing to $path: $result\n")
+                writeSysFs(path, "device")
             }
         } else {
-             sb.append("Search failed. Raw Output:\n$rawOutput\n")
-             // Keep the hardcoded ones just in case 'find' failed but paths exist (blind shot)
-             sb.append("Fallback Path A: " + writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/e2500000.usb2/host_dev", "device") + "\n")
+             sb.append("SysFs search failed. Access might be restricted.\n")
+             // Blind shot
+             writeSysFs("/sys/devices/platform/soc/soc:ap-ahb/20200000.usb/host_dev", "device")
         }
-
-
-        // Method 6: Proprietary Wireless Trigger (Found in init.syu.rc)
+        
+        // Method 6: Proprietary Wireless Trigger
         sb.append("Prop sys.wl.enable: " + runShell("setprop sys.wl.enable 1") + "\n")
 
-        UiEventBus.emit(UiEvent.Snackbar("Force Attempt Complete:\n$sb"))
+        UiEventBus.emit(UiEvent.Snackbar("Force Sequence Done. Check PC!\n$sb"))
     }
     
     // Direct file write using Java IO (Bypasses shell restrictions if file is 0666)
