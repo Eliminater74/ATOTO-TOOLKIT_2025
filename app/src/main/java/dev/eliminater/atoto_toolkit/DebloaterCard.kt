@@ -58,9 +58,16 @@ fun DebloaterCard() {
 
     // Load once
     LaunchedEffect(Unit) {
-        hasRoot = RootShell.isRootAvailable()
-        hasLocalAdb = dev.eliminater.atoto_toolkit.LocalAdb.isConnected()
-        all = loadPackages(ctx)
+        // Run checks in parallel so package list isn't blocked by slow ADB/Root checks
+        launch { 
+            all = loadPackages(ctx) 
+        }
+        launch { 
+            hasRoot = RootShell.isRootAvailable() 
+        }
+        launch { 
+            hasLocalAdb = dev.eliminater.atoto_toolkit.LocalAdb.isConnected() 
+        }
     }
 
     Column(
