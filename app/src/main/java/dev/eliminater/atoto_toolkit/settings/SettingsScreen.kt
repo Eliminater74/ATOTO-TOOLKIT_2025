@@ -295,25 +295,18 @@ private fun ThemeOptionRow(
         val preState = runShell("getprop sys.usb.state")
         sb.append("Pre-State: $preState\n")
 
-        // 1. Kill the stack
-        runShell("setprop sys.usb.config none")
-        // Ensure ConfigFS is active (Dump shows sys.usb.configfs: 1)
-        runShell("setprop sys.usb.configfs 1")
-        kotlinx.coroutines.delay(1000)
-        
-        // 2. Restart with COMPOUND ADB (Matching known working state)
-        // 'adb' alone might not be a valid composition on this kernel check 'mtp,adb'
-        val res1 = runShell("setprop sys.usb.config mtp,adb")
-        sb.append("Set 'mtp,adb': $res1\n")
-        
-        // 3. Backup Props
-        runShell("setprop persist.sys.usb.config mtp,adb")
-        runShell("setprop persist.service.adb.enable 1")
-        runShell("setprop service.adb.tcp.port 5555")
+        // 5. Apply the working configuration (Simulated "Chinese Option")
+        // Step A: Set the lock/unlock property we found
+        val res0 = runShell("setprop sys.adb.functions_disable disable")
+        sb.append("Unlock Prop: $res0\n")
 
+        // Step B: Set USB Mode to MTP,ADB (Exact match to working state)
+        val res1 = runShell("setprop sys.usb.config mtp,adb")
+        sb.append("Set Config: $res1\n")
+        
         kotlinx.coroutines.delay(1000)
-        val postState = runShell("getprop sys.usb.state")
-        sb.append("Post-State: $postState\n")
+        val postState = runShell("getprop sys.usb.config")
+        sb.append("Current Config: $postState\n")
         
         // Method 6: Proprietary Wireless Trigger
         sb.append("Prop sys.wl.enable: " + runShell("setprop sys.wl.enable 1") + "\n")
