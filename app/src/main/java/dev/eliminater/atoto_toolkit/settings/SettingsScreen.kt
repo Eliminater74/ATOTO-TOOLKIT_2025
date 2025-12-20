@@ -297,16 +297,17 @@ private fun ThemeOptionRow(
 
         // 1. Kill the stack
         runShell("setprop sys.usb.config none")
+        // Ensure ConfigFS is active (Dump shows sys.usb.configfs: 1)
+        runShell("setprop sys.usb.configfs 1")
         kotlinx.coroutines.delay(1000)
         
-        // 2. Restart with EXCLUSIVE ADB
-        // 'mtp,adb' seems to fail to trigger the daemon on some units.
-        // We force 'adb' only. User can use "Restore USB" to get MTP back.
-        val res1 = runShell("setprop sys.usb.config adb")
-        sb.append("Set 'adb': $res1\n")
+        // 2. Restart with COMPOUND ADB (Matching known working state)
+        // 'adb' alone might not be a valid composition on this kernel check 'mtp,adb'
+        val res1 = runShell("setprop sys.usb.config mtp,adb")
+        sb.append("Set 'mtp,adb': $res1\n")
         
         // 3. Backup Props
-        runShell("setprop persist.sys.usb.config adb")
+        runShell("setprop persist.sys.usb.config mtp,adb")
         runShell("setprop persist.service.adb.enable 1")
         runShell("setprop service.adb.tcp.port 5555")
 
