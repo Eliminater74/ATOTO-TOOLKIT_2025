@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" />
 
+    <!-- Permission to query all packages (fixing empty list on some ROMs) -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
     <!-- Package visibility (harmless on Android 10, required on 11+) -->
     <queries>
         <package android:name="com.teslacoilsw.launcher" />
