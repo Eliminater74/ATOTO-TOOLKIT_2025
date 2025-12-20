@@ -267,7 +267,13 @@ private fun ThemeOptionRow(
             sb.append("Native fytadbon.sh not found.\n")
         }
 
-        sb.append("\n=== PHASE 3: Settings Toggle (Wakeup Call) ===\n")
+        sb.append("\n=== PHASE 3: Property Patch (Dump Analysis) ===\n")
+        // Found via user dump comparison: this property is present when working, missing when broken
+        val propPatch = runShell("setprop sys.adb.functions_disable disable")
+        sb.append("Scanning Dump Diff... Found match: sys.adb.functions_disable\n")
+        sb.append("Applying Patch: $propPatch\n")
+
+        sb.append("\n=== PHASE 4: Settings Toggle (Wakeup Call) ===\n")
         // Toggle OFF then ON to trigger system observers
         try {
             android.provider.Settings.Global.putInt(ctx.contentResolver, "adb_enabled", 0)
@@ -283,7 +289,7 @@ private fun ThemeOptionRow(
         } catch (e: Exception) { /* Ignore secure failure */ }
 
 
-        sb.append("\n=== PHASE 4: USB Stack Reset (The Kickstart) ===\n")
+        sb.append("\n=== PHASE 5: USB Stack Reset (The Hammer) ===\n")
         
         // Debug current state
         val preState = runShell("getprop sys.usb.state")
