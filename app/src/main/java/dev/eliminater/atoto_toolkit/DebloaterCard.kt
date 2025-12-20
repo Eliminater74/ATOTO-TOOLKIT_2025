@@ -271,28 +271,44 @@ private fun filtered(list: List<PkgItem>, q: String): List<PkgItem> {
 }
 
 private suspend fun loadPackages(ctx: Context): List<PkgItem> = withContext(Dispatchers.IO) {
-    val pm = ctx.packageManager
-    val infos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0))
-    } else {
-        @Suppress("DEPRECATION")
-        pm.getInstalledPackages(0)
-    }
-    infos.map { pi ->
-        val p = pi.packageName
+    try {
+        val pm = ctx.packageManager
+        val infos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstalledPackages(0)
+        }
         
-        // Get friendly label
-        var label = pi.applicationInfo?.let { ai ->
-            runCatching { pm.getApplicationLabel(ai).toString() }.getOrNull()
-        } ?: p
+        if (infos.isEmpty()) {
+            return@withContext listOf(PkgItem("error.empty", "No Apps Found", "PackageManager returned 0 items", SafetyLevel.UNKNOWN))
+        }
 
-        // Lookup metadata
-        val known = PackageDB.KNOWN_PACKAGES[p]
-        val desc = known?.description ?: ""
-        val saf = known?.safety ?: SafetyLevel.UNKNOWN
-        
-        PkgItem(p, label, desc, saf)
-    }.sortedBy { it.label.lowercase(Locale.ROOT) }
+        infos.map { pi ->
+            val p = pi.packageName
+            
+            // Get friendly label
+            var label = p // Default to package name
+            try {
+                 val ai = pi.applicationInfo
+                 if (ai != null) {
+                     label = pm.getApplicationLabel(ai).toString()
+                 }
+            } catch (e: Exception) {
+                // Ignore label load error
+            }
+    
+            // Lookup metadata
+            val known = PackageDB.KNOWN_PACKAGES[p]
+            val desc = known?.description ?: ""
+            val saf = known?.safety ?: SafetyLevel.UNKNOWN
+            
+            PkgItem(p, label, desc, saf)
+        }.sortedBy { it.label.lowercase(Locale.ROOT) }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        listOf(PkgItem("error.exception", "Load Failed", "Error: ${e.message}", SafetyLevel.UNSAFE))
+    }
 }
 
 private suspend fun runPkgs(
